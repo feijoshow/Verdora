@@ -3,9 +3,9 @@ import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HomeScreen } from '../screens/farmer/HomeScreen';
 import { CropScannerScreen } from '../screens/farmer/CropScannerScreen';
-import { CalendarPlaceholderScreen } from '../screens/farmer/CalendarPlaceholderScreen';
-import { WeatherPlaceholderScreen } from '../screens/farmer/WeatherPlaceholderScreen';
-import { ChatPlaceholderScreen } from '../screens/farmer/ChatPlaceholderScreen';
+import { PlantationCalendarScreen } from '../screens/farmer/PlantationCalendarScreen';
+import { WeatherScreen } from '../screens/farmer/WeatherScreen';
+import { ChatScreen } from '../screens/farmer/ChatScreen';
 import { colors } from '../constants/theme';
 import type { FarmerTabParamList } from './types';
 
@@ -44,9 +44,9 @@ export function FarmerTabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
       <Tab.Screen name="Scanner" component={CropScannerScreen} options={{ title: 'Scan' }} />
-      <Tab.Screen name="Calendar" component={CalendarPlaceholderScreen} options={{ title: 'Calendar' }} />
-      <Tab.Screen name="Weather" component={WeatherPlaceholderScreen} options={{ title: 'Weather' }} />
-      <Tab.Screen name="Chat" component={ChatPlaceholderScreen} options={{ title: 'Chat' }} />
+      <Tab.Screen name="Calendar" component={PlantationCalendarScreen} options={{ title: 'Calendar' }} />
+      <Tab.Screen name="Weather" component={WeatherScreen} options={{ title: 'Weather' }} />
+      <Tab.Screen name="Chat" component={ChatScreen} options={{ title: 'Chat' }} />
     </Tab.Navigator>
   );
 }

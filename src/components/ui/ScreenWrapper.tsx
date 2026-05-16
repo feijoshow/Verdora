@@ -1,11 +1,18 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, type ViewProps } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  type RefreshControlProps,
+  type ViewProps,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing } from '../../constants/theme';
 
 interface ScreenWrapperProps extends ViewProps {
   scrollable?: boolean;
   padded?: boolean;
+  refreshControl?: React.ReactElement<RefreshControlProps>;
 }
 
 /** Consistent safe-area layout for all screens */
@@ -13,6 +20,7 @@ export function ScreenWrapper({
   children,
   scrollable = true,
   padded = true,
+  refreshControl,
   style,
   ...rest
 }: ScreenWrapperProps) {
@@ -25,6 +33,7 @@ export function ScreenWrapper({
           contentContainerStyle={[contentStyle, styles.scrollContent]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          refreshControl={refreshControl}
         >
           {children}
         </ScrollView>
