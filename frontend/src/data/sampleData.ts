@@ -8,6 +8,8 @@ export const SAMPLE_USERS: User[] = [
     name: 'Maria Santos',
     role: 'farmer',
     location: 'Laguna, Philippines',
+    latitude: 14.2691,
+    longitude: 121.4113,
     cropsPlanted: ['Rice', 'Tomato', 'Eggplant'],
     farmSize: '2 hectares',
     farmerType: 'small-scale',

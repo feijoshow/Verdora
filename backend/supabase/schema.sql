@@ -36,6 +36,7 @@ create table if not exists public.crops (
   harvest_date date,
   location text,
   field_name text,
+  field_id text references public.fields (id) on delete set null,
   soil_type text,
   farming_methods jsonb default '[]'::jsonb,
   notes text,
@@ -47,6 +48,21 @@ create index if not exists idx_crops_user_id on public.crops (user_id);
 create index if not exists idx_crops_crop_name on public.crops (crop_name);
 create index if not exists idx_crops_plant_date on public.crops (plant_date);
 
+-- ─── FIELDS (plots on multi-plot farms) ───
+create table if not exists public.fields (
+  id text primary key,
+  user_id text not null references public.users (id) on delete cascade,
+  name text not null,
+  latitude double precision,
+  longitude double precision,
+  sort_order smallint not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, name)
+);
+
+create index if not exists idx_fields_user_id on public.fields (user_id);
+
 -- ─── SCANS (crop AI diagnosis) ───
 create table if not exists public.scans (
   id text primary key,
@@ -57,6 +73,8 @@ create table if not exists public.scans (
   confidence double precision not null default 0,
   treatment text,
   location text,
+  field_id text references public.fields (id) on delete set null,
+  field_name text,
   latitude double precision,
   longitude double precision,
   scanned_at timestamptz not null default now()
@@ -97,6 +115,7 @@ create index if not exists idx_chat_logs_asked_at on public.chat_logs (asked_at 
 
 -- Row Level Security (enable in production; adjust policies for your auth model)
 alter table public.users enable row level security;
+alter table public.fields enable row level security;
 alter table public.crops enable row level security;
 alter table public.scans enable row level security;
 alter table public.weather_logs enable row level security;
@@ -118,6 +137,7 @@ drop policy if exists "Allow anon crops" on public.crops;
 drop policy if exists "Allow anon scans" on public.scans;
 drop policy if exists "Allow anon weather" on public.weather_logs;
 drop policy if exists "Allow anon chat" on public.chat_logs;
+drop policy if exists "Allow anon fields" on public.fields;
 
 create policy "Allow anon read users" on public.users for select to anon, authenticated using (true);
 create policy "Allow anon insert users" on public.users for insert to anon, authenticated with check (true);
@@ -127,6 +147,11 @@ create policy "Allow anon crops select" on public.crops for select to anon, auth
 create policy "Allow anon crops insert" on public.crops for insert to anon, authenticated with check (true);
 create policy "Allow anon crops update" on public.crops for update to anon, authenticated using (true);
 create policy "Allow anon crops delete" on public.crops for delete to anon, authenticated using (true);
+
+create policy "Allow anon fields select" on public.fields for select to anon, authenticated using (true);
+create policy "Allow anon fields insert" on public.fields for insert to anon, authenticated with check (true);
+create policy "Allow anon fields update" on public.fields for update to anon, authenticated using (true);
+create policy "Allow anon fields delete" on public.fields for delete to anon, authenticated using (true);
 
 create policy "Allow anon scans select" on public.scans for select to anon, authenticated using (true);
 create policy "Allow anon scans insert" on public.scans for insert to anon, authenticated with check (true);

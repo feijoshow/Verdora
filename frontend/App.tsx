@@ -2,10 +2,10 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppBootstrap } from './src/components/branding/AppBootstrap';
 import { AuthProvider } from './src/context/AuthContext';
 import { DiagnosisProvider } from './src/context/DiagnosisContext';
 import { PrivacyProvider } from './src/context/PrivacyContext';
-import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App() {
   return (
@@ -14,7 +14,7 @@ export default function App() {
         <AuthProvider>
           <PrivacyProvider>
             <DiagnosisProvider>
-              <RootNavigator />
+              <AppBootstrap />
               <StatusBar style="dark" />
             </DiagnosisProvider>
           </PrivacyProvider>

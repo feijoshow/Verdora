@@ -26,9 +26,12 @@ src/
 
 ```bash
 npm install
-npm start          # Expo (offline mode)
+npm start              # Expo dev server (offline — avoids network fetch errors)
+npm run start:clear    # Same, with cache cleared
 npm run typecheck
 ```
+
+Use `npm start` instead of `npx expo start --clear`. Plain `expo start` tries to reach Expo servers and can fail with `TypeError: fetch failed` when offline or behind a firewall.
 
 ## Environment
 

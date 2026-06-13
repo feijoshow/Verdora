@@ -63,6 +63,7 @@ export interface WeatherQueryParams {
   lat?: number;
   lon?: number;
   city?: string;
+  fieldId?: string;
 }
 
 export interface WeatherResponse extends WeatherData {

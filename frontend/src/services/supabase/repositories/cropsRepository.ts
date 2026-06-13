@@ -15,6 +15,7 @@ export function eventToCropRow(
     harvest_date: event.harvestDate ?? null,
     location: user.location ?? null,
     field_name: event.fieldName ?? null,
+    field_id: event.fieldId ?? null,
     soil_type: extras?.soilType ?? user.soilType ?? null,
     farming_methods: extras?.farmingMethods ?? user.farmingMethods ?? [],
     notes: event.notes ?? null,

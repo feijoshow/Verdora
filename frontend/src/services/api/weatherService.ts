@@ -95,16 +95,27 @@ export async function getWeather(user: User, params?: WeatherQueryParams): Promi
   const query = { ...params, city };
 
   const farming = await getUserFarmingRecords(user.id);
+  const fieldId = params?.fieldId;
+  const fieldRecords = fieldId
+    ? farming.filter((r) => r.fieldId === fieldId)
+    : farming;
+
   const crops = [
-    ...new Set([...(user.cropsPlanted ?? []), ...farming.map((r) => r.cropName)]),
+    ...new Set([
+      ...(fieldId ? [] : user.cropsPlanted ?? []),
+      ...fieldRecords.map((r) => r.cropName),
+    ]),
   ];
 
-  if (env.openWeatherApiKey && city) {
+  if (env.openWeatherApiKey && (city || (params?.lat != null && params?.lon != null))) {
     try {
       const weather = await openWeatherGetCurrent(query);
+      const locationLabel = fieldId && fieldRecords[0]?.fieldName
+        ? `${fieldRecords[0].fieldName} · ${weather.location}`
+        : user.location ?? weather.location;
       return {
         ...weather,
-        location: user.location ?? weather.location,
+        location: locationLabel,
         plantingWindows: buildCropRecommendations(
           crops,
           weather.temperature,

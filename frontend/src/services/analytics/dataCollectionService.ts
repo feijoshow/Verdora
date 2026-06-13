@@ -12,6 +12,7 @@ import type {
   UserProfileRecord,
 } from '../../types/analytics';
 import type { DiagnosisResult, PlantingEvent, User, WeatherData } from '../../types';
+import { env } from '../../config/env';
 import { mockId } from '../mocks/mockUtils';
 import { getCloudAdminInsights } from '../supabase/analyticsRepository';
 import { insertChatLog } from '../supabase/repositories/chatRepository';
@@ -19,6 +20,8 @@ import { upsertCrop, deleteCrop as deleteCloudCrop } from '../supabase/repositor
 import { insertScan } from '../supabase/repositories/scansRepository';
 import { upsertUser } from '../supabase/repositories/usersRepository';
 import { insertWeatherLog } from '../supabase/repositories/weatherRepository';
+import { buildRegionalIntelligence } from '../intelligence/aggregationEngine';
+import { extractChatTopic } from '../intelligence/topicExtraction';
 
 const ANALYTICS_DB_KEY = '@verdora_analytics_db';
 
@@ -86,23 +89,34 @@ export async function trackUserProfile(user: User, dataConsent?: boolean): Promi
 export async function trackCropScan(
   user: User,
   diagnosis: DiagnosisResult,
+  field?: { fieldId?: string; fieldName?: string; latitude?: number; longitude?: number },
 ): Promise<void> {
   if (!(await canCollectForUser(user))) return;
 
-  await insertScan(user, diagnosis);
+  const enriched: DiagnosisResult = {
+    ...diagnosis,
+    fieldId: field?.fieldId ?? diagnosis.fieldId,
+    fieldName: field?.fieldName ?? diagnosis.fieldName,
+  };
+
+  await insertScan(user, enriched, field);
 
   const db = await loadDb();
   db.cropScans.unshift({
-    id: diagnosis.id,
+    id: enriched.id,
     userId: user.id,
     userName: user.name,
-    location: user.location ?? 'Unknown',
-    imageUri: diagnosis.imageUri,
-    cropType: diagnosis.cropName,
-    disease: diagnosis.disease,
-    confidence: diagnosis.confidence,
-    treatment: diagnosis.treatment,
-    timestamp: diagnosis.scannedAt,
+    location: field?.fieldName ?? user.location ?? 'Unknown',
+    latitude: field?.latitude ?? user.latitude,
+    longitude: field?.longitude ?? user.longitude,
+    imageUri: enriched.imageUri,
+    cropType: enriched.cropName,
+    disease: enriched.disease,
+    confidence: enriched.confidence,
+    treatment: enriched.treatment,
+    timestamp: enriched.scannedAt,
+    fieldId: enriched.fieldId,
+    fieldName: enriched.fieldName,
   });
   await saveDb(db);
   await syncUserCrops(user.id, diagnosis.cropName);
@@ -140,6 +154,7 @@ export async function trackFarmingRecord(
     soilType: extras?.soilType ?? user.soilType,
     farmingMethods: extras?.farmingMethods ?? user.farmingMethods,
     fieldName: event.fieldName,
+    fieldId: event.fieldId,
     updatedAt: new Date().toISOString(),
   };
   if (existing >= 0) db.farmingRecords[existing] = record;
@@ -241,19 +256,6 @@ export async function updateFarmerProfile(
 
 // ——— Aggregation for admin ———
 
-function extractChatTopic(question: string): string {
-  const q = question.toLowerCase();
-  if (q.includes('yellow') || q.includes('wilting')) return 'Crop discoloration / health';
-  if (q.includes('maize') || q.includes('corn')) return 'Maize / corn issues';
-  if (q.includes('rice')) return 'Rice cultivation';
-  if (q.includes('tomato') || q.includes('blight')) return 'Tomato diseases';
-  if (q.includes('fertiliz') || q.includes('nutrient')) return 'Fertilizer & nutrients';
-  if (q.includes('pest') || q.includes('insect')) return 'Pest management';
-  if (q.includes('weather') || q.includes('rain')) return 'Weather & planting timing';
-  if (q.includes('plant') || q.includes('when')) return 'Planting schedules';
-  return 'General farming advice';
-}
-
 function aggregateDiseaseOutbreaks(scans: CropScanRecord[]): DiseaseOutbreakInsight[] {
   const map = new Map<string, DiseaseOutbreakInsight>();
   for (const scan of scans) {
@@ -304,6 +306,11 @@ function aggregateLocationSegments(users: UserProfileRecord[]): LocationSegment[
 }
 
 export async function getAdminDashboardInsights(): Promise<AdminDashboardInsights> {
+  if (env.useMockApi) {
+    const { ensureDemoIntelligenceSeed } = await import('../../data/demoIntelligenceSeed');
+    await ensureDemoIntelligenceSeed();
+  }
+
   try {
     const cloud = await getCloudAdminInsights();
     if (cloud && cloud.summary.totalUsers > 0) return cloud;
@@ -359,6 +366,12 @@ export async function getAdminDashboardInsights(): Promise<AdminDashboardInsight
     environmentLogs: envLogs,
     environmentSummary: { avgTemperature, avgHumidity, topConditions },
     chatInsights: aggregateChatInsights(db.chatQuestions),
+    regionalIntelligence: buildRegionalIntelligence({
+      scans: db.cropScans,
+      questions: db.chatQuestions,
+      farming: db.farmingRecords,
+      weatherLogs: envLogs,
+    }),
   };
 }
 

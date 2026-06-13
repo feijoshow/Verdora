@@ -4,6 +4,7 @@ import { colors, spacing, typography, borderRadius } from '../../constants/theme
 
 export type AdminTab =
   | 'overview'
+  | 'intelligence'
   | 'users'
   | 'farming'
   | 'scans'
@@ -12,6 +13,7 @@ export type AdminTab =
 
 const TABS: { id: AdminTab; label: string; emoji: string }[] = [
   { id: 'overview', label: 'Overview', emoji: '📊' },
+  { id: 'intelligence', label: 'Intel', emoji: '🧠' },
   { id: 'users', label: 'Users', emoji: '👤' },
   { id: 'farming', label: 'Farming', emoji: '🌱' },
   { id: 'scans', label: 'Scans', emoji: '📷' },

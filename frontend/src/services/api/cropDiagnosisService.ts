@@ -101,6 +101,8 @@ export async function fetchDiagnosisHistory(userId: string): Promise<DiagnosisRe
           treatment: s.treatment ?? '',
           imageUri: s.image_url ?? undefined,
           scannedAt: s.scanned_at,
+          fieldId: s.field_id ?? undefined,
+          fieldName: s.field_name ?? undefined,
         }));
       }
     } catch {

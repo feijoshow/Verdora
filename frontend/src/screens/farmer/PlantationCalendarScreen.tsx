@@ -2,14 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   RefreshControl,
   StyleSheet,
   Text,
-  View,
 } from 'react-native';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
-import { Button, Card, ScreenWrapper } from '../../components/ui';
+import { Card, ScreenWrapper } from '../../components/ui';
+import { CropPlantingPlanner, type PlannerSavePayload } from '../../components/calendar/CropPlantingPlanner';
 import { EventFormModal, type EventFormValues } from '../../components/calendar/EventFormModal';
 import { PlantingEventCard } from '../../components/calendar/PlantingEventCard';
 import { useAuth } from '../../context/AuthContext';
@@ -30,8 +29,9 @@ export function PlantationCalendarScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState<PlantingEvent | null>(null);
+  const [plannerKey, setPlannerKey] = useState(0);
 
   const loadEvents = useCallback(async (isRefresh = false) => {
     if (!user) return;
@@ -53,38 +53,48 @@ export function PlantationCalendarScreen() {
     loadEvents();
   }, [loadEvents]);
 
-  const openAdd = () => {
-    setEditingEvent(null);
-    setModalVisible(true);
-  };
-
   const openEdit = (event: PlantingEvent) => {
     setEditingEvent(event);
-    setModalVisible(true);
+    setEditModalVisible(true);
   };
 
-  const handleSave = async (values: EventFormValues) => {
+  const handlePlannerSave = async (payload: PlannerSavePayload) => {
     if (!user) return;
     setSaving(true);
     try {
-      const payload = {
+      const saved = await createPlantingEvent(user.id, {
+        cropName: payload.cropName,
+        plantDate: payload.plantDate,
+        harvestDate: payload.harvestDate || undefined,
+        fieldId: payload.fieldId ?? undefined,
+        fieldName: payload.fieldName || undefined,
+        notes: payload.notes || undefined,
+      });
+      await trackFarmingRecord(user, saved);
+      setPlannerKey((k) => k + 1);
+      await loadEvents(true);
+      Alert.alert('Added', `${payload.cropName} is on your calendar.`);
+    } catch (err) {
+      Alert.alert('Error', toApiError(err).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditSave = async (values: EventFormValues) => {
+    if (!user || !editingEvent) return;
+    setSaving(true);
+    try {
+      const saved = await updatePlantingEvent(user.id, editingEvent.id, {
         cropName: values.cropName.trim(),
         plantDate: values.plantDate.trim(),
         harvestDate: values.harvestDate.trim() || undefined,
+        fieldId: values.fieldId ?? undefined,
         fieldName: values.fieldName.trim() || undefined,
         notes: values.notes.trim() || undefined,
-      };
-
-      let saved: PlantingEvent;
-      if (editingEvent) {
-        saved = await updatePlantingEvent(user.id, editingEvent.id, payload);
-      } else {
-        saved = await createPlantingEvent(user.id, payload);
-      }
-
+      });
       await trackFarmingRecord(user, saved);
-
-      setModalVisible(false);
+      setEditModalVisible(false);
       await loadEvents(true);
     } catch (err) {
       Alert.alert('Error', toApiError(err).message);
@@ -126,22 +136,27 @@ export function PlantationCalendarScreen() {
         }
       >
         <ScreenHeader
-          title="Plantation Calendar"
-          subtitle="Your real planting & harvest schedule"
+          title="Planting Guide"
+          subtitle="Choose a crop — see soil, irrigation & harvest timing"
         />
 
-        <Button title="+ Add planting event" onPress={openAdd} fullWidth />
+        {user ? (
+          <CropPlantingPlanner
+            key={plannerKey}
+            userId={user.id}
+            onSave={handlePlannerSave}
+            saving={saving}
+          />
+        ) : null}
 
-        <Text style={styles.sectionTitle}>
-          Upcoming & scheduled ({events.length})
-        </Text>
+        <Text style={styles.sectionTitle}>My calendar ({events.length})</Text>
 
         {loading && events.length === 0 ? (
           <ActivityIndicator color={colors.primary} style={styles.loader} />
         ) : events.length === 0 ? (
           <Card variant="highlight">
             <Text style={styles.empty}>
-              No events yet. Tap “Add planting event” to schedule your first crop.
+              No crops scheduled yet. Pick a crop above and tap “Add to my calendar”.
             </Text>
           </Card>
         ) : (
@@ -154,21 +169,14 @@ export function PlantationCalendarScreen() {
             />
           ))
         )}
-
-        <Card style={styles.hintCard}>
-          <Text style={styles.hintTitle}>📦 Custom dataset</Text>
-          <Text style={styles.hintText}>
-            This calendar is structured for easy integration with regional planting datasets via{' '}
-            <Text style={styles.hintCode}>importCalendarDataset()</Text> when your backend is ready.
-          </Text>
-        </Card>
       </ScreenWrapper>
 
       <EventFormModal
-        visible={modalVisible}
+        visible={editModalVisible}
+        userId={user?.id ?? ''}
         event={editingEvent}
-        onClose={() => setModalVisible(false)}
-        onSave={handleSave}
+        onClose={() => setEditModalVisible(false)}
+        onSave={handleEditSave}
         saving={saving}
       />
     </>
@@ -176,14 +184,7 @@ export function PlantationCalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { marginTop: spacing.md, marginBottom: spacing.md },
-  title: { ...typography.h2, color: colors.primary },
-  subtitle: { ...typography.bodySmall, marginTop: spacing.xs },
   sectionTitle: { ...typography.h3, marginVertical: spacing.md },
   loader: { marginVertical: spacing.xl },
-  empty: { ...typography.bodySmall, textAlign: 'center' },
-  hintCard: { marginTop: spacing.lg, backgroundColor: colors.surfaceAlt },
-  hintTitle: { ...typography.bodySmall, fontWeight: '700', marginBottom: spacing.xs },
-  hintText: { ...typography.caption, lineHeight: 18 },
-  hintCode: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 11 },
+  empty: { ...typography.bodySmall, textAlign: 'center', lineHeight: 20 },
 });

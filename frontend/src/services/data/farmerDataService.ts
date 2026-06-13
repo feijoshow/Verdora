@@ -54,6 +54,8 @@ export function scanRecordToDiagnosis(scan: CropScanRecord): DiagnosisResult {
     treatment: scan.treatment,
     imageUri: scan.imageUri,
     scannedAt: scan.timestamp,
+    fieldId: scan.fieldId,
+    fieldName: scan.fieldName,
   };
 }
 

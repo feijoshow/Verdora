@@ -5,6 +5,7 @@
   "description": "Verdora — agricultural intelligence platform",
   "scripts": {
     "start": "npm run start --prefix frontend",
+    "start:clear": "npm run start:clear --prefix frontend",
     "start:online": "npm run start:online --prefix frontend",
     "android": "npm run android --prefix frontend",
     "ios": "npm run ios --prefix frontend",

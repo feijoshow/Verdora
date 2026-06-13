@@ -33,6 +33,8 @@ function dbScanToRecord(scan: DbScan, userName: string, location: string): CropS
     confidence: scan.confidence,
     treatment: scan.treatment ?? '',
     timestamp: scan.scanned_at,
+    fieldId: scan.field_id ?? undefined,
+    fieldName: scan.field_name ?? undefined,
   };
 }
 
@@ -47,6 +49,7 @@ function dbCropToRecord(crop: DbCrop, location: string): FarmingDataRecord {
     soilType: crop.soil_type ?? undefined,
     farmingMethods: crop.farming_methods ?? [],
     fieldName: crop.field_name ?? undefined,
+    fieldId: crop.field_id ?? undefined,
     updatedAt: crop.updated_at,
   };
 }

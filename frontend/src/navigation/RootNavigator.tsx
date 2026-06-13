@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -11,15 +11,15 @@ import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export function RootNavigator() {
-  const { user, isLoading, isAuthenticated } = useAuth();
+interface RootNavigatorProps {
+  showApp: boolean;
+}
 
-  if (isLoading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+export function RootNavigator({ showApp }: RootNavigatorProps) {
+  const { user, isAuthenticated } = useAuth();
+
+  if (!showApp) {
+    return <View style={styles.placeholder} />;
   }
 
   return (
@@ -38,10 +38,8 @@ export function RootNavigator() {
 }
 
 const styles = StyleSheet.create({
-  loading: {
+  placeholder: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: colors.background,
   },
 });

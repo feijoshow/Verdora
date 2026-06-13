@@ -19,6 +19,9 @@ import { DiagnosisHistoryList } from '../../components/scanner/DiagnosisHistoryL
 import { useAuth } from '../../context/AuthContext';
 import { useDiagnosis } from '../../context/DiagnosisContext';
 import { diagnoseCropImage } from '../../services/api/cropDiagnosisService';
+import { FieldPicker } from '../../components/fields/FieldPicker';
+import type { FarmField } from '../../types/field';
+import { setLastSelectedFieldId } from '../../services/fields/fieldService';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 import type { FarmerStackParamList, FarmerTabParamList } from '../../navigation/types';
 
@@ -33,6 +36,8 @@ export function CropScannerScreen({ navigation }: Props) {
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [selectedField, setSelectedField] = useState<FarmField | null>(null);
   const { user } = useAuth();
   const { history, addDiagnosis } = useDiagnosis();
 
@@ -45,8 +50,14 @@ export function CropScannerScreen({ navigation }: Props) {
       setIsAnalyzing(true);
       try {
         const result = await diagnoseCropImage(uri, user);
-        await addDiagnosis(result);
-        navigation.navigate('DiagnosisResults', { result });
+        const tagged = {
+          ...result,
+          fieldId: selectedField?.id,
+          fieldName: selectedField?.name,
+        };
+        await addDiagnosis(tagged, selectedField ?? undefined);
+        if (selectedField) await setLastSelectedFieldId(user.id, selectedField.id);
+        navigation.navigate('DiagnosisResults', { result: tagged });
         setPreviewUri(null);
       } catch {
         Alert.alert('Analysis failed', 'Could not analyze the image. Please try again.');
@@ -54,7 +65,7 @@ export function CropScannerScreen({ navigation }: Props) {
         setIsAnalyzing(false);
       }
     },
-    [addDiagnosis, navigation, user],
+    [addDiagnosis, navigation, selectedField, user],
   );
 
   const handleCapture = async () => {
@@ -122,8 +133,22 @@ export function CropScannerScreen({ navigation }: Props) {
     <ScreenWrapper padded={false}>
       <ScreenHeader
         title="Crop Scanner"
-        subtitle="Diagnosis uses crops from your calendar — add them first"
+        subtitle="Tag scans to a field — add plots in Profile first"
       />
+
+      {user ? (
+        <View style={styles.fieldPicker}>
+          <FieldPicker
+            userId={user.id}
+            value={selectedFieldId}
+            onChange={(id, field) => {
+              setSelectedFieldId(id);
+              setSelectedField(field);
+            }}
+            label="Scan this field"
+          />
+        </View>
+      ) : null}
 
       {/* Camera / preview area */}
       <View style={styles.cameraContainer}>
@@ -228,6 +253,7 @@ const styles = StyleSheet.create({
   },
   analyzingText: { ...typography.body, color: colors.white, marginTop: spacing.md },
   actions: { paddingHorizontal: spacing.md, marginTop: spacing.md, gap: spacing.sm },
+  fieldPicker: { paddingHorizontal: spacing.md, marginTop: spacing.sm },
   historySection: { paddingHorizontal: spacing.md, marginTop: spacing.lg },
   sectionTitle: { ...typography.h3, marginBottom: spacing.md },
   divider: { height: spacing.md },

@@ -43,6 +43,8 @@ function dbScanToRecord(s: DbScan, users: Map<string, DbUser>): CropScanRecord {
     userId: s.user_id,
     userName: u?.name ?? 'Unknown',
     location: s.location ?? u?.location ?? 'Unknown',
+    latitude: s.latitude ?? u?.latitude ?? undefined,
+    longitude: s.longitude ?? u?.longitude ?? undefined,
     imageUri: s.image_url ?? undefined,
     cropType: s.crop_type,
     disease: s.disease,
@@ -98,16 +100,10 @@ function aggregateDiseaseOutbreaks(scans: CropScanRecord[]): DiseaseOutbreakInsi
   return Array.from(map.values()).sort((a, b) => b.count - a.count);
 }
 
-function extractChatTopic(q: string): string {
-  const lower = q.toLowerCase();
-  if (lower.includes('yellow') || lower.includes('wilting')) return 'Crop discoloration';
-  if (lower.includes('maize') || lower.includes('corn')) return 'Maize / corn';
-  if (lower.includes('rice')) return 'Rice';
-  if (lower.includes('tomato') || lower.includes('blight')) return 'Tomato diseases';
-  if (lower.includes('fertiliz')) return 'Fertilizer';
-  if (lower.includes('weather') || lower.includes('rain')) return 'Weather & planting';
-  return 'General advice';
-}
+import {
+  buildRegionalIntelligence,
+} from '../intelligence/aggregationEngine';
+import { extractChatTopic } from '../intelligence/topicExtraction';
 
 function aggregateChatInsights(logs: DbChatLog[]): ChatInsight[] {
   const map = new Map<string, ChatInsight>();
@@ -233,5 +229,18 @@ export async function getCloudAdminInsights(): Promise<AdminDashboardInsights | 
         .slice(0, 5),
     },
     chatInsights: aggregateChatInsights(chatLogs),
+    regionalIntelligence: buildRegionalIntelligence({
+      scans: cropScans,
+      questions: chatLogs.map((log) => ({
+        id: log.id,
+        userId: log.user_id,
+        location: log.location ?? 'Unknown',
+        question: log.question,
+        timestamp: log.asked_at,
+        aiResponse: log.ai_response ?? undefined,
+      })),
+      farming: farmingData,
+      weatherLogs: environmentLogs,
+    }),
   };
 }

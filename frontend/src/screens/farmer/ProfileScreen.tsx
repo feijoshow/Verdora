@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Input, ScreenWrapper } from '../../components/ui';
 import { PrivacySettingsCard } from '../../components/privacy/PrivacySettingsCard';
+import { FieldsManager } from '../../components/fields/FieldsManager';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
 import { useAuth } from '../../context/AuthContext';
 import type { FarmerType, User } from '../../types';
@@ -116,6 +117,8 @@ export function ProfileScreen() {
           placeholder="e.g. Calamba"
         />
       </Card>
+
+      {user ? <FieldsManager userId={user.id} /> : null}
 
       <Card style={styles.card}>
         <Text style={styles.sectionLabel}>Farm details</Text>

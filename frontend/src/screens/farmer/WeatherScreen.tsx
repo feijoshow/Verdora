@@ -7,13 +7,16 @@ import {
   View,
 } from 'react-native';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
+import { FieldPicker } from '../../components/fields/FieldPicker';
 import { Card, ScreenWrapper } from '../../components/ui';
 import { PlantingRecommendationCard } from '../../components/weather/PlantingRecommendationCard';
 import { useAuth } from '../../context/AuthContext';
 import { trackEnvironment } from '../../services/analytics/dataCollectionService';
+import { getFarmFieldById } from '../../services/fields/fieldService';
 import { getWeather } from '../../services/api/weatherService';
 import { toApiError } from '../../services/api/errors';
 import type { WeatherResponse } from '../../services/api/types';
+import type { FarmField } from '../../types/field';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 
 function weatherEmoji(icon: string): string {
@@ -29,6 +32,8 @@ export function WeatherScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [selectedField, setSelectedField] = useState<FarmField | null>(null);
 
   const city = user?.location?.split(',')[0]?.trim() ?? 'Laguna';
 
@@ -39,20 +44,38 @@ export function WeatherScreen() {
     setError('');
 
     try {
-      const data = await getWeather(user, { city });
+      const field = selectedFieldId ? await getFarmFieldById(user.id, selectedFieldId) : null;
+      const hasCoords = field?.latitude != null && field?.longitude != null;
+
+      const data = await getWeather(user, {
+        city: hasCoords ? undefined : city,
+        lat: hasCoords ? field!.latitude : undefined,
+        lon: hasCoords ? field!.longitude : undefined,
+        fieldId: selectedFieldId ?? undefined,
+      });
+
       setWeather(data);
-      await trackEnvironment(user, data);
+      await trackEnvironment(user, {
+        ...data,
+        location: field?.name ? `${field.name} · ${data.location}` : data.location,
+      });
     } catch (err) {
       setError(toApiError(err).message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [city, user]);
+  }, [city, selectedFieldId, user]);
 
   useEffect(() => {
     loadWeather();
   }, [loadWeather]);
+
+  const subtitle = selectedField
+    ? selectedField.latitude != null
+      ? `Micro-forecast for ${selectedField.name}`
+      : `Forecast for ${selectedField.name} (farm location)`
+    : `Live data for ${user?.location ?? city}`;
 
   return (
     <ScreenWrapper
@@ -65,10 +88,21 @@ export function WeatherScreen() {
         />
       }
     >
-      <ScreenHeader
-        title="Weather"
-        subtitle={`Live data for ${user?.location ?? city}`}
-      />
+      <ScreenHeader title="Weather" subtitle={subtitle} />
+
+      {user ? (
+        <FieldPicker
+          userId={user.id}
+          value={selectedFieldId}
+          onChange={(id, field) => {
+            setSelectedFieldId(id);
+            setSelectedField(field);
+          }}
+          label="Weather for"
+          allowNone
+          noneLabel="Whole farm"
+        />
+      ) : null}
 
       {loading && !weather ? (
         <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
@@ -100,20 +134,26 @@ export function WeatherScreen() {
             </View>
             {weather.recommendation ? (
               <View style={styles.tipBox}>
-                <Text style={styles.tipLabel}>💡 Farming tip</Text>
+                <Text style={styles.tipLabel}>Farming tip</Text>
                 <Text style={styles.tipText}>{weather.recommendation}</Text>
               </View>
             ) : null}
           </Card>
 
-          <Text style={styles.sectionTitle}>Best planting times</Text>
+          <Text style={styles.sectionTitle}>
+            {selectedField ? `Planting times — ${selectedField.name}` : 'Best planting times'}
+          </Text>
           {weather.plantingWindows?.length ? (
             weather.plantingWindows.map((item) => (
               <PlantingRecommendationCard key={item.cropName} item={item} />
             ))
           ) : (
             <Card>
-              <Text style={styles.empty}>No planting recommendations available.</Text>
+              <Text style={styles.empty}>
+                {selectedField
+                  ? 'No crops scheduled on this field yet — add events in Calendar.'
+                  : 'No planting recommendations available.'}
+              </Text>
             </Card>
           )}
         </>
@@ -123,8 +163,6 @@ export function WeatherScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { ...typography.h2, color: colors.primary, marginTop: spacing.md },
-  subtitle: { ...typography.bodySmall, marginBottom: spacing.lg },
   loader: { marginTop: spacing.xxl },
   errorText: { ...typography.bodySmall, color: colors.error },
   weatherCard: { marginBottom: spacing.lg },

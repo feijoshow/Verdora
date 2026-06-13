@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import type { DiagnosisResult } from '../types';
+import type { FarmField } from '../types/field';
 import { useAuth } from './AuthContext';
 import { trackCropScan } from '../services/analytics/dataCollectionService';
 import { fetchDiagnosisHistory } from '../services/api/cropDiagnosisService';
@@ -15,7 +16,7 @@ interface DiagnosisContextValue {
   history: DiagnosisResult[];
   isLoading: boolean;
   refreshHistory: () => Promise<void>;
-  addDiagnosis: (result: DiagnosisResult) => Promise<void>;
+  addDiagnosis: (result: DiagnosisResult, field?: FarmField) => Promise<void>;
   clearHistory: () => Promise<void>;
 }
 
@@ -44,9 +45,16 @@ export function DiagnosisProvider({ children }: { children: React.ReactNode }) {
   }, [refreshHistory]);
 
   const addDiagnosis = useCallback(
-    async (result: DiagnosisResult) => {
+    async (result: DiagnosisResult, field?: FarmField) => {
       if (!user) return;
-      await trackCropScan(user, result);
+      await trackCropScan(user, result, field
+        ? {
+            fieldId: field.id,
+            fieldName: field.name,
+            latitude: field.latitude,
+            longitude: field.longitude,
+          }
+        : undefined);
       await refreshHistory();
     },
     [user, refreshHistory],

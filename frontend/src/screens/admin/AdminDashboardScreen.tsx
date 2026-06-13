@@ -17,6 +17,9 @@ import { useAuth } from '../../context/AuthContext';
 import { exportUserReport, getAdminDashboard } from '../../services/api/adminService';
 import { isSupabaseConfigured } from '../../services/supabase/client';
 import { toApiError } from '../../services/api/errors';
+import { DiseaseAlertCard } from '../../components/intelligence/DiseaseAlertCard';
+import { KnowledgeGapCard } from '../../components/intelligence/KnowledgeGapCard';
+import { PlantingInsightCard } from '../../components/intelligence/PlantingInsightCard';
 import type { AdminDashboardInsights } from '../../types/analytics';
 import type { AdminStackParamList } from '../../navigation/types';
 import { colors, spacing, typography } from '../../constants/theme';
@@ -122,7 +125,19 @@ export function AdminDashboardScreen() {
               behavior analysis. Personal data is never sold — only aggregated reports.
             </Text>
           </Card>
-          {data.diseaseOutbreaks[0] ? (
+          {data.regionalIntelligence.diseaseAlerts[0] ? (
+            <Card style={styles.alertCard}>
+              <Text style={styles.alertTitle}>🗺️ Active outbreak cluster</Text>
+              <Text style={styles.alertBody}>
+                {data.regionalIntelligence.diseaseAlerts[0].disease} —{' '}
+                {data.regionalIntelligence.diseaseAlerts[0].scanCount} scans within{' '}
+                {data.regionalIntelligence.diseaseAlerts[0].radiusKm} km
+              </Text>
+              <Pressable onPress={() => setTab('intelligence')}>
+                <Text style={styles.link}>View intelligence dashboard →</Text>
+              </Pressable>
+            </Card>
+          ) : data.diseaseOutbreaks[0] ? (
             <Card style={styles.alertCard}>
               <Text style={styles.alertTitle}>⚠️ Trending disease</Text>
               <Text style={styles.alertBody}>
@@ -140,6 +155,58 @@ export function AdminDashboardScreen() {
               </Text>
             </Card>
           ) : null}
+        </>
+      )}
+
+      {tab === 'intelligence' && (
+        <>
+          <Card variant="highlight">
+            <Text style={styles.cardTitle}>Actionable regional intelligence</Text>
+            <Text style={styles.cardBody}>
+              Geospatial outbreak clusters, knowledge gaps for extension services, and planting
+              window optimization from aggregated farmer data.
+              {data.regionalIntelligence.lastAggregatedAt
+                ? ` Last computed: ${new Date(data.regionalIntelligence.lastAggregatedAt).toLocaleString()}.`
+                : ''}
+            </Text>
+          </Card>
+
+          <Text style={styles.section}>Disease alerts (heat map clusters)</Text>
+          {data.regionalIntelligence.diseaseAlerts.length === 0 ? (
+            <Card>
+              <Text style={styles.itemMeta}>
+                No geospatial clusters yet — need 3+ disease scans within 50 km.
+              </Text>
+            </Card>
+          ) : (
+            data.regionalIntelligence.diseaseAlerts.map((alert) => (
+              <DiseaseAlertCard key={alert.id} alert={alert} />
+            ))
+          )}
+
+          <Text style={styles.section}>Knowledge gap reports (NGO / extension)</Text>
+          {data.regionalIntelligence.knowledgeGaps.length === 0 ? (
+            <Card>
+              <Text style={styles.itemMeta}>No knowledge gaps detected yet.</Text>
+            </Card>
+          ) : (
+            data.regionalIntelligence.knowledgeGaps.map((gap) => (
+              <KnowledgeGapCard key={gap.id} report={gap} />
+            ))
+          )}
+
+          <Text style={styles.section}>Planting window optimization</Text>
+          {data.regionalIntelligence.plantingInsights.length === 0 ? (
+            <Card>
+              <Text style={styles.itemMeta}>
+                Add calendar events and weather logs to generate planting insights.
+              </Text>
+            </Card>
+          ) : (
+            data.regionalIntelligence.plantingInsights.map((insight) => (
+              <PlantingInsightCard key={insight.id} insight={insight} />
+            ))
+          )}
         </>
       )}
 
@@ -366,6 +433,7 @@ const styles = StyleSheet.create({
   alertCard: { backgroundColor: '#FFF8E7', marginBottom: spacing.md },
   alertTitle: { ...typography.bodySmall, fontWeight: '700', color: colors.secondaryDark },
   alertBody: { ...typography.bodySmall, marginTop: spacing.xs },
+  link: { ...typography.caption, marginTop: spacing.sm, color: colors.primary, fontWeight: '600' },
   emptyCard: { marginBottom: spacing.md },
   emptyTitle: { ...typography.h3, fontSize: 16, marginBottom: spacing.sm },
   emptyBody: { ...typography.bodySmall, lineHeight: 20 },

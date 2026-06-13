@@ -46,6 +46,7 @@ export function DiagnosisHistoryList({ items, onPressItem }: DiagnosisHistoryLis
                   {item.disease ?? 'Healthy — no disease detected'}
                 </Text>
                 <Text style={styles.meta}>
+                  {item.fieldName ? `${item.fieldName} · ` : ''}
                   {Math.round(item.confidence * 100)}% · {formatDate(item.scannedAt)}
                 </Text>
               </View>

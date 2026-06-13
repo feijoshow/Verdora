@@ -1,4 +1,5 @@
 export type { UserRole, FarmerType, User } from './user';
+export type { FarmField } from './field';
 
 export * from './analytics';
 
@@ -11,6 +12,8 @@ export interface DiagnosisResult {
   treatment: string;
   imageUri?: string;
   scannedAt: string;
+  fieldId?: string;
+  fieldName?: string;
 }
 
 /** Plantation calendar event — structured for future dataset integration */
@@ -20,6 +23,7 @@ export interface PlantingEvent {
   plantDate: string;
   harvestDate?: string;
   notes?: string;
+  fieldId?: string;
   fieldName?: string;
 }
 

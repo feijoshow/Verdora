@@ -6,12 +6,16 @@ export interface CropScanRecord {
   userId: string;
   userName: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   imageUri?: string;
   cropType: string;
   disease: string | null;
   confidence: number;
   treatment: string;
   timestamp: string;
+  fieldId?: string;
+  fieldName?: string;
 }
 
 /** Farming activity from calendar & profile */
@@ -24,6 +28,7 @@ export interface FarmingDataRecord {
   harvestDate?: string;
   soilType?: string;
   farmingMethods?: string[];
+  fieldId?: string;
   fieldName?: string;
   updatedAt: string;
 }
@@ -85,6 +90,57 @@ export interface ChatInsight {
   locations: string[];
 }
 
+/** Geospatial disease outbreak alert — privacy-safe aggregate */
+export interface DiseaseAlert {
+  id: string;
+  disease: string;
+  cropTypes: string[];
+  scanCount: number;
+  radiusKm: number;
+  centerLat: number;
+  centerLng: number;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  regionLabel?: string;
+  active: boolean;
+  detectedAt: string;
+  expiresAt?: string;
+}
+
+/** Regional knowledge gap for NGOs / extension services */
+export interface KnowledgeGapReport {
+  id: string;
+  topic: string;
+  region: string;
+  questionCount: number;
+  sampleQuestion: string;
+  priority: 'low' | 'medium' | 'high';
+  locations: string[];
+  reportDate: string;
+}
+
+/** Planting window insight from calendar + weather aggregation */
+export interface PlantingWindowInsight {
+  id: string;
+  cropName: string;
+  region: string;
+  optimalMonths: string[];
+  observedPlantMonths: string[];
+  farmerCount: number;
+  avgTemperature?: number;
+  avgHumidity?: number;
+  recommendation: string;
+  reportDate: string;
+}
+
+/** Actionable regional intelligence payload */
+export interface RegionalIntelligence {
+  diseaseAlerts: DiseaseAlert[];
+  knowledgeGaps: KnowledgeGapReport[];
+  plantingInsights: PlantingWindowInsight[];
+  lastAggregatedAt?: string;
+}
+
 export interface LocationSegment {
   location: string;
   userCount: number;
@@ -116,4 +172,5 @@ export interface AdminDashboardInsights {
     topConditions: { condition: string; count: number }[];
   };
   chatInsights: ChatInsight[];
+  regionalIntelligence: RegionalIntelligence;
 }

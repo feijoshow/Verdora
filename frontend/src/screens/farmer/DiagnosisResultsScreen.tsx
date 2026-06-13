@@ -35,6 +35,13 @@ export function DiagnosisResultsScreen({ navigation, route }: Props) {
         <Text style={styles.label}>Crop identified</Text>
         <Text style={styles.cropName}>{result.cropName}</Text>
 
+        {result.fieldName ? (
+          <>
+            <Text style={styles.label}>Field</Text>
+            <Text style={styles.fieldName}>{result.fieldName}</Text>
+          </>
+        ) : null}
+
         <Text style={styles.label}>Condition</Text>
         <Text style={[styles.disease, isHealthy && styles.healthyText]}>
           {result.disease ?? 'No disease detected'}
@@ -87,6 +94,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   cropName: { ...typography.h1, fontSize: 26, color: colors.primaryDark },
+  fieldName: { ...typography.body, color: colors.primary, marginBottom: spacing.sm },
   disease: { ...typography.body, fontWeight: '600', color: colors.error },
   healthyText: { color: colors.success },
   treatment: { ...typography.bodySmall, lineHeight: 22 },

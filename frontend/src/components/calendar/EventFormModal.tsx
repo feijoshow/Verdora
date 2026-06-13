@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import type { PlantingEvent } from '../../types';
+import type { FarmField } from '../../types/field';
+import { FieldPicker } from '../fields/FieldPicker';
 import { Button, Input } from '../ui';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 
@@ -17,12 +19,14 @@ export interface EventFormValues {
   cropName: string;
   plantDate: string;
   harvestDate: string;
+  fieldId: string | null;
   fieldName: string;
   notes: string;
 }
 
 interface EventFormModalProps {
   visible: boolean;
+  userId: string;
   event?: PlantingEvent | null;
   onClose: () => void;
   onSave: (values: EventFormValues) => void;
@@ -33,12 +37,14 @@ const EMPTY: EventFormValues = {
   cropName: '',
   plantDate: '',
   harvestDate: '',
+  fieldId: null,
   fieldName: '',
   notes: '',
 };
 
 export function EventFormModal({
   visible,
+  userId,
   event,
   onClose,
   onSave,
@@ -52,6 +58,7 @@ export function EventFormModal({
         cropName: event.cropName,
         plantDate: event.plantDate,
         harvestDate: event.harvestDate ?? '',
+        fieldId: event.fieldId ?? null,
         fieldName: event.fieldName ?? '',
         notes: event.notes ?? '',
       });
@@ -62,6 +69,14 @@ export function EventFormModal({
 
   const update = (key: keyof EventFormValues, text: string) => {
     setValues((prev) => ({ ...prev, [key]: text }));
+  };
+
+  const handleFieldChange = (fieldId: string | null, field: FarmField | null) => {
+    setValues((prev) => ({
+      ...prev,
+      fieldId,
+      fieldName: field?.name ?? '',
+    }));
   };
 
   const handleSave = () => {
@@ -105,11 +120,11 @@ export function EventFormModal({
                 onChangeText={(t) => update('harvestDate', t)}
                 placeholder="2026-09-20"
               />
-              <Input
-                label="Field / location"
-                value={values.fieldName}
-                onChangeText={(t) => update('fieldName', t)}
-                placeholder="North Field"
+              <FieldPicker
+                userId={userId}
+                value={values.fieldId}
+                onChange={handleFieldChange}
+                label="Field / plot"
               />
               <Input
                 label="Notes"
