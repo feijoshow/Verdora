@@ -30,6 +30,8 @@ Verdora/
 
    From the repo root you can also run: `npm install` then `npm start`.
 
+   To test on an iPhone, install **Expo Go** (SDK 54), run `npm start`, and scan the QR code. See [frontend/README.md](frontend/README.md) for device setup and troubleshooting.
+
 3. **Demo login** (mock API): `farmer@verdora.com` / `admin@verdora.com` — password `verdora123`
 
 ## Environment

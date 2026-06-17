@@ -4,7 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { colors, typography } from '../../constants/theme';
 
 const LOGO = require('../../../assets/verdora-logo.png');
-const MIN_SPLASH_MS = 1400;
+const MIN_SPLASH_MS = 3500;
 
 interface AppSplashProps {
   /** App finished loading (e.g. auth restored) */
