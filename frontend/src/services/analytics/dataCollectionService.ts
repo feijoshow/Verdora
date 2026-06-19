@@ -12,8 +12,7 @@ import type {
   UserProfileRecord,
 } from '../../types/analytics';
 import type { DiagnosisResult, PlantingEvent, User, WeatherData } from '../../types';
-import { env } from '../../config/env';
-import { mockId } from '../mocks/mockUtils';
+import { generateId } from '../../utils/generateId';
 import { getCloudAdminInsights } from '../supabase/analyticsRepository';
 import { insertChatLog } from '../supabase/repositories/chatRepository';
 import { upsertCrop, deleteCrop as deleteCloudCrop } from '../supabase/repositories/cropsRepository';
@@ -173,7 +172,7 @@ export async function trackEnvironment(
 
   const db = await loadDb();
   db.environmentLogs.unshift({
-    id: mockId('env'),
+    id: generateId('env'),
     userId: user.id,
     location: weather.location,
     temperature: weather.temperature,
@@ -197,7 +196,7 @@ export async function trackChatQuestion(
 
   const db = await loadDb();
   db.chatQuestions.unshift({
-    id: mockId('chat'),
+    id: generateId('chat'),
     userId: user.id,
     location: user.location ?? 'Unknown',
     question: question.trim(),
@@ -306,11 +305,6 @@ function aggregateLocationSegments(users: UserProfileRecord[]): LocationSegment[
 }
 
 export async function getAdminDashboardInsights(): Promise<AdminDashboardInsights> {
-  if (env.useMockApi) {
-    const { ensureDemoIntelligenceSeed } = await import('../../data/demoIntelligenceSeed');
-    await ensureDemoIntelligenceSeed();
-  }
-
   try {
     const cloud = await getCloudAdminInsights();
     if (cloud && cloud.summary.totalUsers > 0) return cloud;

@@ -12,5 +12,13 @@
     "web": "npm run web --prefix frontend",
     "typecheck": "npm run typecheck --prefix frontend",
     "install:frontend": "npm install --prefix frontend"
+  },
+  "dependencies": {
+    "expo": "^56.0.12",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.14",
+    "typescript": "~6.0.3"
   }
 }

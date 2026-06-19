@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { env } from '../../config/env';
+import { hasRestApi, env } from '../../config/env';
 import type { ChatMessage, User } from '../../types';
+import { generateId } from '../../utils/generateId';
 import { getUserCropScans, getUserFarmingRecords } from '../analytics/dataCollectionService';
-import { mockDelay, mockId } from '../mocks/mockUtils';
 import { API_ENDPOINTS, EXTERNAL_APIS } from './endpoints';
 import { apiPost, externalClient } from './client';
 import type { ChatRequest, ChatResponse } from './types';
@@ -51,11 +51,10 @@ async function buildDataDrivenReply(user: User, message: string): Promise<string
 }
 
 async function localSendMessage(user: User, request: ChatRequest): Promise<ChatResponse> {
-  await mockDelay(900);
   const content = await buildDataDrivenReply(user, request.message);
   return {
     reply: {
-      id: mockId('msg'),
+      id: generateId('msg'),
       role: 'assistant',
       content,
       timestamp: new Date().toISOString(),
@@ -93,7 +92,7 @@ async function geminiSendMessage(request: ChatRequest, user: User): Promise<Chat
 
   return {
     reply: {
-      id: mockId('msg'),
+      id: generateId('msg'),
       role: 'assistant',
       content: text,
       timestamp: new Date().toISOString(),
@@ -106,7 +105,7 @@ async function apiSendMessage(request: ChatRequest): Promise<ChatResponse> {
 }
 
 export async function sendChatMessage(user: User, request: ChatRequest): Promise<ChatResponse> {
-  if (env.geminiApiKey && !env.useMockApi) {
+  if (env.geminiApiKey) {
     try {
       return await geminiSendMessage(request, user);
     } catch {
@@ -114,7 +113,7 @@ export async function sendChatMessage(user: User, request: ChatRequest): Promise
     }
   }
 
-  if (!env.useMockApi) {
+  if (hasRestApi) {
     try {
       return await apiSendMessage(request);
     } catch {

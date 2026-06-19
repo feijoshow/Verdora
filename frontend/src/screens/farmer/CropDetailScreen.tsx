@@ -97,7 +97,7 @@ export function CropDetailScreen() {
                 fieldName: undefined,
                 notes: `Auto-added from crop library`,
               } as any;
-              const saved = await createPlantingEvent(user.id, payload);
+              const saved = await createPlantingEvent(user.id, payload, user);
               await trackFarmingRecord(user, saved);
               nav.navigate('FarmerTabs', { screen: 'Calendar' });
             } catch (e) {

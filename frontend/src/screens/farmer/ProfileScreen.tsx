@@ -29,7 +29,7 @@ function buildLocation(village: string, region: string): string {
 }
 
 export function ProfileScreen() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
   const [name, setName] = useState('');
   const [region, setRegion] = useState('');
   const [village, setVillage] = useState('');
@@ -161,6 +161,8 @@ export function ProfileScreen() {
       <PrivacySettingsCard />
 
       <Button title="Save profile" onPress={handleSave} loading={saving} fullWidth />
+
+      <Button title="Log out" variant="ghost" onPress={logout} fullWidth style={styles.logout} />
     </ScreenWrapper>
   );
 }
@@ -183,4 +185,5 @@ const styles = StyleSheet.create({
   typeChipActive: { borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
   typeText: { ...typography.bodySmall, color: colors.textSecondary },
   typeTextActive: { color: colors.primary, fontWeight: '700' },
+  logout: { marginTop: spacing.md },
 });

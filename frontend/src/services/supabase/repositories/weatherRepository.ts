@@ -1,11 +1,11 @@
 import type { User, WeatherData } from '../../../types';
 import type { DbWeatherLog, InsertDbWeatherLog } from '../../../types/database';
-import { mockId } from '../../mocks/mockUtils';
+import { generateId } from '../../../utils/generateId';
 import { getSupabase } from '../client';
 
 export function weatherToLogRow(user: User, weather: WeatherData): InsertDbWeatherLog {
   return {
-    id: mockId('wlog'),
+    id: generateId('wlog'),
     user_id: user.id,
     location: weather.location,
     temperature: weather.temperature,

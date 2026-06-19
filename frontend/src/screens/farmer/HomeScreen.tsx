@@ -20,7 +20,7 @@ type Props = CompositeScreenProps<
 >;
 
 export function HomeScreen({ navigation }: Props) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [summary, setSummary] = useState<FarmerSummary | null>(null);
   const [nearbyAlerts, setNearbyAlerts] = useState<DiseaseAlert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +48,6 @@ export function HomeScreen({ navigation }: Props) {
       <ScreenHeader
         title={`Hello, ${user?.name?.split(' ')[0] ?? 'Farmer'}`}
         subtitle={user?.location ? user.location : 'Set your location in Profile'}
-        rightAction={{ label: 'Logout', onPress: logout }}
       />
 
       <Pressable onPress={() => navigation.navigate('Profile')} style={styles.profileLink}>

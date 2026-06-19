@@ -10,8 +10,8 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export function LoginScreen({ navigation }: Props) {
   const { login } = useAuth();
-  const [email, setEmail] = useState('farmer@verdora.com');
-  const [password, setPassword] = useState('verdora123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -53,10 +53,6 @@ export function LoginScreen({ navigation }: Props) {
         onPress={() => navigation.navigate('Register')}
         fullWidth
       />
-
-      <Text style={styles.hint}>
-        Demo: farmer@verdora.com / admin@verdora.com — password: verdora123
-      </Text>
     </ScreenWrapper>
   );
 }
@@ -66,5 +62,4 @@ const styles = StyleSheet.create({
   logo: { fontSize: 36, fontWeight: '700', color: colors.primary },
   subtitle: { ...typography.bodySmall, marginTop: spacing.sm },
   error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
-  hint: { ...typography.caption, textAlign: 'center', marginTop: spacing.lg },
 });

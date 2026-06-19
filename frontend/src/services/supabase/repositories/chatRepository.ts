@@ -1,6 +1,6 @@
 import type { User } from '../../../types';
 import type { DbChatLog, InsertDbChatLog } from '../../../types/database';
-import { mockId } from '../../mocks/mockUtils';
+import { generateId } from '../../../utils/generateId';
 import { getSupabase } from '../client';
 
 export async function insertChatLog(
@@ -12,7 +12,7 @@ export async function insertChatLog(
   if (!sb) return;
 
   const row: InsertDbChatLog = {
-    id: mockId('clog'),
+    id: generateId('clog'),
     user_id: user.id,
     location: user.location ?? null,
     question: question.trim(),

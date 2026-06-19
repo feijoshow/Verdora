@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { FarmField } from '../../types/field';
 import { MAX_FARM_FIELDS } from '../../constants/fields';
-import { mockId } from '../mocks/mockUtils';
+import { generateId } from '../../utils/generateId';
 import {
   deleteField as deleteCloudField,
   fetchFieldsByUser,
@@ -88,7 +88,7 @@ export async function saveFarmField(
       throw new Error(`Maximum ${MAX_FARM_FIELDS} fields allowed`);
     }
     field = {
-      id: mockId('field'),
+      id: generateId('field'),
       userId,
       name,
       latitude: input.latitude,

@@ -44,7 +44,7 @@ Admin Intel tab → Regional intelligence dashboard → Export PDF/JSON
 - **Knowledge gaps**: Chat questions clustered by topic + region for NGO/extension reports
 - **Planting windows**: Calendar plant dates + weather logs vs crop library optimal months
 
-Local mock mode runs the same aggregation engine client-side; production uses the nightly Edge Function.
+The app aggregates intelligence client-side from real user data; production also runs the nightly Edge Function for pre-computed alerts.
 
 ## Setup Supabase
 

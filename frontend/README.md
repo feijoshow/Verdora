@@ -11,22 +11,22 @@ src/
 ├── navigation/    # React Navigation stacks & tabs
 ├── context/       # Auth, Privacy, Diagnosis state
 ├── services/
-│   ├── api/       # Auth, weather, chat, diagnosis, admin API layer
+│   ├── api/       # REST integrations (optional) + service layer
 │   ├── analytics/ # Data collection (local + Supabase sync)
 │   ├── supabase/  # Cloud repositories & client
-│   ├── data/      # Per-user farmer data helpers
-│   └── mocks/     # Mock delays & IDs for demo mode
+│   └── data/      # Per-user farmer data helpers
 ├── types/         # Shared TypeScript types
 ├── constants/     # Theme, privacy copy
 ├── config/        # Environment config
-└── data/          # Static crop knowledge & demo users
+├── data/          # Crop knowledge & planting guides (reference content)
+└── utils/         # Shared helpers
 ```
 
 ## Prerequisites
 
 - Node.js 20+
-- [Expo Go](https://expo.dev/go) on your phone, updated to a version that supports **SDK 54**
-- iPhone and dev machine on the same Wi‑Fi (for QR code / LAN connection)
+- A [Supabase](https://supabase.com) project with the Verdora schema applied (see `../backend/README.md`)
+- [Expo Go](https://expo.dev/go) on your phone (SDK 54) for device testing
 
 ## Commands
 
@@ -40,56 +40,38 @@ npm run typecheck
 
 From the repo root you can run the same scripts via `npm start`, `npm run start:clear`, etc.
 
-Use `npm start` instead of plain `npx expo start`. The default Expo CLI tries to reach Expo servers and can fail with `TypeError: fetch failed` when offline or behind a firewall.
+## Deployment setup
+
+1. Copy `.env.example` to `.env` and set your **Supabase URL and anon key** (required).
+2. Optionally set `EXPO_PUBLIC_OPENWEATHER_API_KEY` and `EXPO_PUBLIC_GEMINI_API_KEY`.
+3. Optionally set `EXPO_PUBLIC_API_URL` if you deploy a separate REST backend.
+4. Users register and sign in with real accounts via **Supabase Auth** (no demo credentials).
 
 ## Run on a physical iPhone (Expo Go)
 
 1. Install or update **Expo Go** from the App Store.
-2. Start the dev server from this folder:
-   ```bash
-   npm start
-   ```
-3. Scan the QR code with the iPhone **Camera** app (or open the project from Expo Go if already connected).
-4. Wait for the bundle to finish downloading — the app should load after that.
+2. Start the dev server: `npm start`
+3. Scan the QR code with the iPhone **Camera** app.
+4. Register a new account in the app (or sign in if you already have one).
 
-If you changed dependencies or see a stale build, restart with a clean cache:
-
-```bash
-npm run start:clear
-```
-
-Then force-close Expo Go on the phone, reopen it, and scan the QR code again.
-
-## Environment
-
-Copy `.env.example` to `.env` in this folder.
+If you see a stale build, run `npm run start:clear` and reconnect.
 
 ## Troubleshooting
 
 ### `private properties are not supported` (red screen on iPhone)
 
-This usually means Expo Go or the Metro cache is out of date for SDK 54.
-
-1. Update **Expo Go** on the App Store.
-2. Restart the dev server with `npm run start:clear`.
-3. Force-close Expo Go and reconnect to the project.
+Update Expo Go on the App Store, then run `npm run start:clear` and reconnect.
 
 ### `TypeError: fetch failed` when starting Expo
 
-Use offline mode: `npm start` or `npm run start:clear` (both pass `--offline`).
+Use `npm start` (offline mode).
 
-### Fonts or icons not loading
+### Authentication errors
 
-`expo-font` is required by `@expo/vector-icons`. If you see font-related errors after a fresh clone, run:
-
-```bash
-npx expo install expo-font
-```
+Ensure `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are set in `.env` and that Supabase Auth (email/password) is enabled in your project dashboard.
 
 ### Check project health
 
 ```bash
 npx expo-doctor
 ```
-
-Fix any reported dependency or config mismatches before testing on a device.

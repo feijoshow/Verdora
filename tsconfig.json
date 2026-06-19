@@ -1,4 +1,10 @@
 {
   "files": [],
-  "references": [{ "path": "./frontend" }]
+  "references": [
+    {
+      "path": "./frontend"
+    }
+  ],
+  "compilerOptions": {},
+  "extends": "expo/tsconfig.base"
 }

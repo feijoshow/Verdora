@@ -1,8 +1,6 @@
-import { env } from '../../config/env';
+import { hasRestApi, env } from '../../config/env';
 import type { User, WeatherData } from '../../types';
-import { getLastEnvironmentLog } from '../analytics/dataCollectionService';
-import { getUserFarmingRecords } from '../analytics/dataCollectionService';
-import { mockDelay } from '../mocks/mockUtils';
+import { getLastEnvironmentLog, getUserFarmingRecords } from '../analytics/dataCollectionService';
 import { API_ENDPOINTS, EXTERNAL_APIS } from './endpoints';
 import { apiGet, externalClient } from './client';
 import type { PlantingRecommendation, WeatherQueryParams, WeatherResponse } from './types';
@@ -87,9 +85,6 @@ async function apiGetWeather(params?: WeatherQueryParams): Promise<WeatherRespon
   return apiGet<WeatherResponse>(API_ENDPOINTS.weather.current, { params });
 }
 
-/**
- * Weather for the farmer's real location and crops.
- */
 export async function getWeather(user: User, params?: WeatherQueryParams): Promise<WeatherResponse> {
   const city = params?.city ?? user.location?.split(',')[0]?.trim();
   const query = { ...params, city };
@@ -127,7 +122,7 @@ export async function getWeather(user: User, params?: WeatherQueryParams): Promi
     }
   }
 
-  if (!env.useMockApi) {
+  if (hasRestApi) {
     try {
       return await apiGetWeather(query);
     } catch {
@@ -138,7 +133,6 @@ export async function getWeather(user: User, params?: WeatherQueryParams): Promi
   const cached = await weatherFromLastLog(user);
   if (cached) return cached;
 
-  await mockDelay(500);
   return {
     location: user.location ?? 'Set your location in profile',
     temperature: 0,

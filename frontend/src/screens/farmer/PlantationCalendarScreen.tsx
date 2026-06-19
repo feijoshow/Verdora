@@ -69,7 +69,7 @@ export function PlantationCalendarScreen() {
         fieldId: payload.fieldId ?? undefined,
         fieldName: payload.fieldName || undefined,
         notes: payload.notes || undefined,
-      });
+      }, user);
       await trackFarmingRecord(user, saved);
       setPlannerKey((k) => k + 1);
       await loadEvents(true);
@@ -92,7 +92,7 @@ export function PlantationCalendarScreen() {
         fieldId: values.fieldId ?? undefined,
         fieldName: values.fieldName.trim() || undefined,
         notes: values.notes.trim() || undefined,
-      });
+      }, user);
       await trackFarmingRecord(user, saved);
       setEditModalVisible(false);
       await loadEvents(true);
