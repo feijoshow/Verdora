@@ -20,8 +20,16 @@ export function normalizeCropName(raw: string | undefined): string | null {
   const known = getKnownCropNames();
   const exact = known.find((n) => n.toLowerCase() === lower);
   if (exact) return exact;
-  const partial = known.find((n) => lower.includes(n.toLowerCase()) || n.toLowerCase().includes(lower));
-  return partial ?? raw.trim();
+
+  // Avoid short fuzzy matches (e.g. "ca" → Cabbage) when the model is uncertain.
+  if (lower.length >= 4) {
+    const partial = known.find(
+      (n) => lower.includes(n.toLowerCase()) || n.toLowerCase().includes(lower),
+    );
+    if (partial) return partial;
+  }
+
+  return raw.trim();
 }
 
 export const NAMIBIA_TREATMENT_HINTS =

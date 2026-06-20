@@ -31,7 +31,7 @@ export const API_ENDPOINTS = {
     plantingRecommendations: '/api/v1/weather/planting-recommendations',
   },
 
-  // AI chatbot (Claude via client, or REST proxy)
+  // AI chatbot (Grok via client, or REST proxy)
   chat: {
     message: '/api/v1/chat/message',
     sessions: '/api/v1/chat/sessions',
@@ -46,13 +46,25 @@ export const API_ENDPOINTS = {
   },
 } as const;
 
+/** Z.ai GLM-4.6V-Flash — crop scanner vision model (free tier) */
+export const ZAI_VISION_MODEL = 'glm-4.6v-flash';
+export const ZAI_CHAT_COMPLETIONS_URL = 'https://api.z.ai/api/paas/v4/chat/completions';
+
+/** @deprecated Legacy Gemini — kept for reference; scanner uses Z.ai */
+export const GEMINI_VISION_MODEL = 'gemini-2.0-flash-lite';
+
+export function geminiVisionUrl(model = GEMINI_VISION_MODEL, apiKey?: string): string {
+  const base = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  return apiKey ? `${base}?key=${encodeURIComponent(apiKey)}` : base;
+}
+
 /** Third-party APIs (called directly when keys are set) */
 export const EXTERNAL_APIS = {
   openWeather: 'https://api.openweathermap.org/data/2.5/weather',
-  claude: 'https://api.anthropic.com/v1/messages',
-  geminiVision:
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+  grok: 'https://api.x.ai/v1/chat/completions',
+  zaiChat: ZAI_CHAT_COMPLETIONS_URL,
+  geminiVision: geminiVisionUrl(),
 } as const;
 
-/** Claude model for the farming chat assistant */
-export const CLAUDE_CHAT_MODEL = 'claude-sonnet-4-20250514';
+/** Grok model for the farming chat assistant */
+export const GROK_CHAT_MODEL = 'grok-4.3';

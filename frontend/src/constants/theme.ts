@@ -1,6 +1,7 @@
 /**
  * Verdora design tokens — agricultural green/earth palette.
  */
+import { Platform } from 'react-native';
 export const colors = {
   primary: '#2D6A4F',
   primaryDark: '#1B4332',
@@ -52,13 +53,18 @@ export const typography = {
 };
 
 export const shadows = {
-  card: {
-    shadowColor: colors.primaryDark,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
+  card: Platform.select({
+    web: {
+      boxShadow: '0 2px 8px rgba(27, 67, 50, 0.08)',
+    },
+    default: {
+      shadowColor: colors.primaryDark,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+  })!,
 };
 
 /** Minimum tappable control size (send buttons, icon buttons). */

@@ -91,7 +91,8 @@
 | Service | Used for |
 |---------|----------|
 | **Anthropic Claude** | Chat assistant |
-| **Google Gemini 2.0 Flash** | Crop scan vision analysis |
+| **Google Gemini 2.0 Flash** | Crop scan vision analysis (legacy — quota exhausted) |
+| **Z.ai GLM-4.6V-Flash** | Crop scan vision analysis (active provider) |
 | **OpenWeather** | Live weather forecasts |
 
 ---
@@ -298,7 +299,7 @@ Creates `role: 'farmer'`, upserts profile to Supabase, tracks profile, persists 
 | Field tagging | `FieldPicker` — optional plot before scan |
 | Capture | `expo-camera` on native; **gallery only on web** |
 | Permissions | Camera permission with gallery fallback |
-| Diagnosis | `diagnoseCropImage()` — Gemini Vision → REST → local crop knowledge |
+| Diagnosis | `diagnoseCropImage()` — Z.ai GLM-4.6V-Flash → local AI API → error (no silent crop fallback) |
 | Persistence | `DiagnosisContext.addDiagnosis()` + analytics `trackCropScan` |
 | Navigation | Push `DiagnosisResults` with result |
 | History | `DiagnosisHistoryList` from context on same screen |
@@ -431,7 +432,7 @@ Open app → Splash (3.5s+) → Login screen
 ```
 Scanner tab → (optional) pick field
   → Take photo OR choose from gallery
-  → Gemini analyzes image (JSON: crop, disease, confidence, treatment)
+  → Z.ai GLM-4.6V-Flash analyzes image (JSON: crop, disease, confidence, treatment)
   → trackCropScan (if consented) → Supabase scans + local analytics
   → DiagnosisContext refreshes history
   → Navigate to DiagnosisResults
@@ -545,7 +546,7 @@ Most other screen state (calendar list, weather, admin tabs) is **local `useStat
 |--------------|--------------|------------------|
 | `authService.ts` | login, register, logout, getCurrentUser | REST or Supabase Auth |
 | `chatService.ts` | sendChatMessage, load/saveChatHistory | Claude → REST → local |
-| `cropDiagnosisService.ts` | diagnoseCropImage, fetchDiagnosisHistory | Gemini → REST → local knowledge |
+| `cropDiagnosisService.ts` | diagnoseCropImage, fetchDiagnosisHistory | Z.ai → local AI API (no silent calendar fallback) |
 | `weatherService.ts` | getWeather, getPlantingRecommendations | OpenWeather → REST → cache |
 | `plantationCalendarService.ts` | CRUD planting events | REST → Supabase crops → AsyncStorage |
 | `adminService.ts` | getAdminDashboard, exports | REST → local analytics |
@@ -622,15 +623,27 @@ Consent-gated trackers:
 
 System prompt includes: location, crops, farm type, soil. Sends last N messages as conversation history.
 
-### Gemini — crop scan analysis
+### Z.ai GLM-4.6V-Flash — crop scan analysis (active)
 
 | Setting | Value |
 |---------|-------|
-| Env | `EXPO_PUBLIC_GEMINI_API_KEY` |
-| Endpoint | `gemini-2.0-flash:generateContent` (vision) |
-| File | `services/api/cropDiagnosisService.ts` |
+| Env (local proxy) | `ZAI_API_KEY` in `api/.env` |
+| Env (direct / mobile) | `EXPO_PUBLIC_ZAI_API_KEY` in `frontend/.env` |
+| Endpoint | `https://api.z.ai/api/paas/v4/chat/completions` |
+| Model | `glm-4.6v-flash` |
+| File | `services/api/cropDiagnosisService.ts`, `api/server.js` |
 
-Image sent as base64 inline data. Model returns JSON: `cropName`, `disease`, `confidence`, `treatment`. Parsed with regex JSON extraction fallback.
+Image sent as base64 data URI in OpenAI-compatible `image_url` content. Model returns JSON: `cropName`, `disease`, `confidence` (0–1), `treatment`. Parsed with regex JSON extraction fallback. On API failure the scanner shows an error — it does **not** silently substitute the farmer's calendar crop.
+
+Run local proxy: `npm run api:dev` with `EXPO_PUBLIC_AI_API_URL=http://localhost:3001`.
+
+### Gemini — crop scan analysis (legacy)
+
+| Setting | Value |
+|---------|-------|
+| Env | `EXPO_PUBLIC_GEMINI_API_KEY` / `GEMINI_API_KEY` |
+| Endpoint | `gemini-2.0-flash:generateContent` (vision) |
+| Status | Legacy — quota exhausted; kept in `.env.example` for when quota recovers |
 
 ### OpenWeather — weather
 
@@ -772,7 +785,7 @@ Export merges cloud + local when local has **more** records. Chat always include
 
 ### Disease fallback (`data/cropKnowledge.ts`)
 
-Used when Gemini/REST unavailable. **6 crops:** Rice, Tomato, Corn, Eggplant, Cassava, Onion — each with one common disease + healthy treatment.
+Used when vision API unavailable and farmer has no registered crops. **Not used as a silent substitute on API errors** — if Z.ai fails, the scanner shows an error instead of defaulting to calendar crop names.
 
 ### Planting guide (`data/cropPlantingGuide.ts`)
 
@@ -809,7 +822,9 @@ Copy `frontend/.env.example` → `frontend/.env`.
 | `EXPO_PUBLIC_SUPABASE_URL` | **Yes** | Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | **Yes** | Supabase anon key |
 | `EXPO_PUBLIC_CLAUDE_API_KEY` | Recommended | Chat assistant |
-| `EXPO_PUBLIC_GEMINI_API_KEY` | Recommended | Crop scanner |
+| `EXPO_PUBLIC_ZAI_API_KEY` | Recommended | Crop scanner (direct; or use `ZAI_API_KEY` via local API) |
+| `EXPO_PUBLIC_AI_API_URL` | Recommended | Local AI proxy (`npm run api:dev`) for chat + scanner |
+| `EXPO_PUBLIC_GEMINI_API_KEY` | Legacy | Crop scanner (Gemini — unused while quota exhausted) |
 | `EXPO_PUBLIC_OPENWEATHER_API_KEY` | Recommended | Live weather |
 | `EXPO_PUBLIC_API_URL` | Optional | Custom REST backend |
 | `EXPO_OFFLINE` | Optional | Expo offline start mode |

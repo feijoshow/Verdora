@@ -1,0 +1,7 @@
+# Supabase local/dev config — https://supabase.com/docs/guides/cli/config
+
+[functions.chat-grok]
+verify_jwt = false
+
+[functions.gemini-scan]
+verify_jwt = false

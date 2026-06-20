@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Image, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Platform, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { colors, logoSize, spacing, typography } from '../../constants/theme';
@@ -7,7 +7,7 @@ import { colors, logoSize, spacing, typography } from '../../constants/theme';
 const LOGO = require('../../../assets/verdora-logo.png');
 const SPLASH_SEEN_KEY = '@verdora_splash_seen';
 const MIN_SPLASH_MS_FIRST = 2800;
-const MIN_SPLASH_MS_RETURN = 1200;
+const useNativeDriver = Platform.OS !== 'web';
 
 interface AppSplashProps {
   /** App finished loading (e.g. auth restored) */
@@ -34,7 +34,7 @@ export function AppSplash({ ready, onDone }: AppSplashProps) {
     Animated.timing(overlayOpacity, {
       toValue: 0,
       duration: 420,
-      useNativeDriver: true,
+      useNativeDriver,
     }).start(({ finished }) => {
       if (finished) onDone();
     });
@@ -55,18 +55,18 @@ export function AppSplash({ ready, onDone }: AppSplashProps) {
           toValue: 1,
           friction: 7,
           tension: 80,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(logoOpacity, {
           toValue: 1,
           duration: 450,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ]),
       Animated.timing(titleOpacity, {
         toValue: 1,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
     ]).start(() => {
       SplashScreen.hideAsync().catch(() => undefined);
@@ -87,7 +87,7 @@ export function AppSplash({ ready, onDone }: AppSplashProps) {
   }, [ready, tryExit]);
 
   return (
-    <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]} pointerEvents="auto">
+    <Animated.View style={[styles.overlay, { opacity: overlayOpacity, pointerEvents: 'auto' }]}>
       <View style={styles.content}>
         <Animated.View style={{ opacity: logoOpacity, transform: [{ scale: logoScale }] }}>
           <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="Verdora logo" />

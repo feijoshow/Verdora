@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useDiagnosis } from '../../context/DiagnosisContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { diagnoseCropImage } from '../../services/api/cropDiagnosisService';
+import { toApiError } from '../../services/api/errors';
 import { FieldPicker } from '../../components/fields/FieldPicker';
 import type { FarmField } from '../../types/field';
 import { setLastSelectedFieldId } from '../../services/fields/fieldService';
@@ -89,10 +90,11 @@ export function CropScannerScreen({ navigation }: Props) {
         }
         navigation.navigate('DiagnosisResults', { result: tagged });
         setPreviewUri(null);
-      } catch {
+      } catch (error) {
         Alert.alert(
           'Analysis failed',
-          'Could not analyze the image. Check your connection and try a clearer photo.',
+          toApiError(error).message ||
+            'Could not analyze the image. Check your connection and try a clearer photo.',
         );
       } finally {
         setIsAnalyzing(false);

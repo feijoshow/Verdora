@@ -16,9 +16,11 @@ Use this document before handing a build to testers. All refinement phases (1–
 - [ ] Supabase schema applied (`supabase/schema.sql` or migrations 001–003)
 - [ ] Supabase **Email** auth enabled; **Confirm email** disabled for instant signup (recommended for test round)
 - [ ] Optional keys set for full AI/weather demo:
-  - [ ] `EXPO_PUBLIC_CLAUDE_API_KEY` — Chat
-  - [ ] `EXPO_PUBLIC_GEMINI_API_KEY` — Scanner
+  - [ ] `EXPO_PUBLIC_AI_API_URL=http://localhost:3001` + `ZAI_API_KEY` in `api/.env` — Scanner (recommended)
+  - [ ] `EXPO_PUBLIC_ZAI_API_KEY` — Scanner (direct, if not using local API)
+  - [ ] `EXPO_PUBLIC_GROK_API_KEY` or `XAI_API_KEY` in `api/.env` — Chat
   - [ ] `EXPO_PUBLIC_OPENWEATHER_API_KEY` — Weather
+  - [ ] `EXPO_PUBLIC_GEMINI_API_KEY` — Legacy scanner (optional; quota exhausted)
 - [ ] Demo build flags (optional):
   - [ ] `EXPO_PUBLIC_DEMO_MODE=1`
   - [ ] `EXPO_PUBLIC_FEEDBACK_EMAIL=your-team@example.com`
@@ -70,8 +72,8 @@ Walkthrough: [`docs/DEMO_SCRIPT.md`](./DEMO_SCRIPT.md)
 |---|------|-------|-------|
 | 1 | Chat quick prompts reflect crops / season (dry season in June) | ☐ | |
 | 2 | Chat answer mentions registered crops or location | ☐ | |
-| 3 | Scanner: non-crop or blurry photo → low confidence / retry message | ☐ | |
-| 4 | Scanner: crop name aligns with library (e.g. Mahango, Tomato) | ☐ | |
+| 3 | Scanner: non-crop or blurry photo → low confidence / retry message (not a calendar crop guess) | ☐ | |
+| 4 | Scanner: crop name aligns with library (e.g. Mahango, Tomato) via Z.ai GLM-4.6V-Flash | ☐ | |
 | 5 | Weather for Oshakati / Windhoek resolves (not wrong country) | ☐ | |
 | 6 | Weather planting cards reference season, not generic humidity only | ☐ | |
 

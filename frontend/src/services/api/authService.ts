@@ -116,7 +116,7 @@ async function supabaseRegister(payload: RegisterRequest): Promise<LoginResponse
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
   assertAuthConfigured();
 
-  if (hasRestApi) {
+  if (hasRestApi && !isSupabaseConfigured()) {
     const response = await apiPost<LoginResponse>(API_ENDPOINTS.auth.login, credentials);
     await tokenStorage.setTokens(response.tokens);
     return response;
@@ -128,7 +128,7 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
 export async function register(payload: RegisterRequest): Promise<LoginResponse> {
   assertAuthConfigured();
 
-  if (hasRestApi) {
+  if (hasRestApi && !isSupabaseConfigured()) {
     const response = await apiPost<LoginResponse>(API_ENDPOINTS.auth.register, payload);
     await tokenStorage.setTokens(response.tokens);
     return response;
@@ -138,7 +138,7 @@ export async function register(payload: RegisterRequest): Promise<LoginResponse>
 }
 
 export async function logout(): Promise<void> {
-  if (hasRestApi) {
+  if (hasRestApi && !isSupabaseConfigured()) {
     try {
       await apiPost(API_ENDPOINTS.auth.logout);
     } catch {
@@ -154,7 +154,7 @@ export async function logout(): Promise<void> {
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  if (hasRestApi) {
+  if (hasRestApi && !isSupabaseConfigured()) {
     try {
       return await apiClient.get<User>(API_ENDPOINTS.auth.me).then((r) => r.data);
     } catch {

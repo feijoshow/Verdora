@@ -24,7 +24,7 @@ export interface FarmerAiContext {
   seasonNote: string;
 }
 
-/** Rich context block for Claude system prompts — uses real profile + activity data. */
+/** Rich context block for chat system prompts — uses real profile + activity data. */
 export async function buildFarmerAiContext(user: User): Promise<FarmerAiContext> {
   const [farming, scans] = await Promise.all([
     getUserFarmingRecords(user.id),
@@ -68,12 +68,12 @@ export async function buildFarmerAiContext(user: User): Promise<FarmerAiContext>
   return { crops, locationLabel, scanSummary, calendarSummary, seasonNote };
 }
 
-export async function buildClaudeSystemPrompt(user: User): Promise<string> {
+export async function buildChatSystemPrompt(user: User): Promise<string> {
   const ctx = await buildFarmerAiContext(user);
   const cropList = ctx.crops.length > 0 ? ctx.crops.join(', ') : 'none registered yet';
 
   return (
-    `You are Verdora, a farming assistant for Namibian small-scale and commercial farmers (Claude).\n` +
+    `You are Verdora, a farming assistant for Namibian small-scale and commercial farmers.\n` +
     `Farmer location: ${ctx.locationLabel}.\n` +
     `Registered crops: ${cropList}.\n` +
     `Farm type: ${user.farmerType ?? 'unspecified'}. Soil: ${user.soilType ?? 'unspecified'}.\n` +

@@ -45,7 +45,7 @@ function welcomeMessage(crops: string[]): ChatMessage {
 
 export function ChatScreen() {
   const { user } = useAuth();
-  const { showWarning, showInfo } = useFeedback();
+  const { showWarning } = useFeedback();
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompts, setPrompts] = useState<string[]>([]);
@@ -108,11 +108,7 @@ export function ChatScreen() {
       });
 
       if (notice) {
-        if (notice.includes('internet') || notice.includes('busy') || notice.includes('Could not reach')) {
-          showWarning(notice);
-        } else {
-          showInfo(notice);
-        }
+        showWarning(notice);
       }
 
       await trackChatQuestion(user, trimmed, reply.content);

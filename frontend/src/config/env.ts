@@ -35,21 +35,31 @@ function readSecret(primary: string, ...fallbackKeys: string[]): string {
 }
 
 const apiUrl = readEnv('EXPO_PUBLIC_API_URL');
+const aiApiUrl = readEnv('EXPO_PUBLIC_AI_API_URL');
 
-/** True when a REST backend URL is configured. */
+/** True when a full Verdora REST backend URL is configured. */
 export const hasRestApi = Boolean(apiUrl.trim());
 
+/** True when the local/cloud AI proxy is configured (chat + crop scan only). */
+export const hasAiApi = Boolean(aiApiUrl.trim());
+
 export const env = {
-  /** Base URL for Verdora REST API (optional if using Supabase Auth + data) */
+  /** Base URL for full Verdora REST API (auth, calendar, admin — optional) */
   apiUrl: apiUrl.trim(),
+
+  /** Base URL for AI proxy only (npm run api:dev → localhost:3001) */
+  aiApiUrl: aiApiUrl.trim(),
 
   /** OpenWeather — live forecasts in Weather tab */
   openWeatherApiKey: readEnv('EXPO_PUBLIC_OPENWEATHER_API_KEY'),
 
-  /** Claude (Anthropic) — AI chat assistant */
-  claudeApiKey: readEnv('EXPO_PUBLIC_CLAUDE_API_KEY'),
+  /** Grok (xAI) — AI chat assistant */
+  grokApiKey: readEnv('EXPO_PUBLIC_GROK_API_KEY'),
 
-  /** Gemini — crop scan / disease analysis (vision) */
+  /** Z.ai — crop scan / disease analysis (vision) */
+  zaiApiKey: readEnv('EXPO_PUBLIC_ZAI_API_KEY'),
+
+  /** @deprecated Legacy Gemini — scanner uses Z.ai; kept for optional fallback docs */
   geminiApiKey: readEnv('EXPO_PUBLIC_GEMINI_API_KEY'),
 
   /** Supabase — required for auth and cloud data sync */

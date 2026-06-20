@@ -67,10 +67,38 @@ export async function apiDelete<T>(url: string, config?: AxiosRequestConfig): Pr
   return data;
 }
 
-/** Standalone client for third-party APIs (OpenWeather, Claude, Gemini) */
+/** Standalone client for third-party APIs (OpenWeather, Grok, Gemini) */
 export const externalClient = axios.create({ timeout: 15000 });
 
 externalClient.interceptors.response.use(
   (response) => response,
   (error) => Promise.reject(toApiError(error)),
 );
+
+/** Client for the AI proxy API (chat + crop scan — not auth/data) */
+export const aiApiClient: AxiosInstance = axios.create({
+  baseURL: env.aiApiUrl,
+  timeout: 90000,
+  headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+});
+
+aiApiClient.interceptors.response.use(
+  (response) => {
+    const body = response.data;
+    if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
+      response.data = (body as ApiResponse<unknown>).data;
+    }
+    return response;
+  },
+  (error) => Promise.reject(toApiError(error)),
+);
+
+/** Typed POST helper for AI proxy routes */
+export async function aiApiPost<T, B = unknown>(
+  url: string,
+  body?: B,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const { data } = await aiApiClient.post<T>(url, body, config);
+  return data;
+}

@@ -23,13 +23,28 @@ export function toApiError(error: unknown): ApiError {
 
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosErr = error as {
-      response?: { status?: number; data?: { message?: string; code?: string } };
+      response?: {
+        status?: number;
+        data?: {
+          message?: string;
+          code?: string;
+          error?: { type?: string; message?: string };
+        };
+      };
       message?: string;
     };
-    return new ApiError(
-      axiosErr.response?.data?.message ?? axiosErr.message ?? 'Request failed',
-      { status: axiosErr.response?.status, code: axiosErr.response?.data?.code },
-    );
+    const data = axiosErr.response?.data as
+      | { message?: string; code?: string; error?: { message?: string; code?: number; status?: string } }
+      | undefined;
+    const message =
+      data?.message ??
+      data?.error?.message ??
+      axiosErr.message ??
+      'Request failed';
+    return new ApiError(message, {
+      status: axiosErr.response?.status ?? data?.error?.code,
+      code: data?.code ?? data?.error?.status ?? data?.error?.message,
+    });
   }
 
   if (error instanceof Error) return new ApiError(error.message);
