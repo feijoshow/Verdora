@@ -2,6 +2,8 @@
 
 Agricultural intelligence platform — crop scanning, plantation calendar, weather, AI chat, and analytics for farmers and admins.
 
+**Full app reference:** [docs/VERDORA_APP.md](docs/VERDORA_APP.md) — complete documentation of every screen, service, data flow, and configuration detail.
+
 ## Project structure
 
 ```
