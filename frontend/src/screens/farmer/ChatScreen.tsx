@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatBubble } from '../../components/chat/ChatBubble';
 import { useAuth } from '../../context/AuthContext';
+import { useFeedback } from '../../context/FeedbackContext';
 import { trackChatQuestion } from '../../services/analytics/dataCollectionService';
 import {
   loadChatHistory,
@@ -41,6 +42,7 @@ function welcomeMessage(crops: string[]): ChatMessage {
 
 export function ChatScreen() {
   const { user } = useAuth();
+  const { showWarning, showInfo } = useFeedback();
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompts, setPrompts] = useState<string[]>([]);
@@ -105,10 +107,18 @@ export function ChatScreen() {
         .filter((m) => m.id !== 'welcome')
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const { reply } = await sendChatMessage(user, {
+      const { reply, notice } = await sendChatMessage(user, {
         message: trimmed,
         history: history.slice(-10),
       });
+
+      if (notice) {
+        if (notice.includes('internet') || notice.includes('busy') || notice.includes('Could not reach')) {
+          showWarning(notice);
+        } else {
+          showInfo(notice);
+        }
+      }
 
       await trackChatQuestion(user, trimmed, reply.content);
 

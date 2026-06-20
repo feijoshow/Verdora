@@ -1,7 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PRIVACY_STORAGE_KEY } from '../constants/privacy';
-import { login as apiLogin, register as apiRegister, logout as apiLogout } from '../services/api/authService';
+import {
+  login as apiLogin,
+  register as apiRegister,
+  logout as apiLogout,
+  validateStoredUser,
+} from '../services/api/authService';
 import { trackUserProfile, updateFarmerProfile } from '../services/analytics/dataCollectionService';
 import { toApiError } from '../services/api/errors';
 import type { FarmerType, User } from '../types';
@@ -39,7 +44,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-        if (stored) setUser(JSON.parse(stored) as User);
+        if (!stored) return;
+
+        const parsed = JSON.parse(stored) as User;
+        const validated = await validateStoredUser(parsed);
+        if (validated) {
+          await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(validated));
+          setUser(validated);
+        } else {
+          await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+        }
       } finally {
         setIsLoading(false);
       }

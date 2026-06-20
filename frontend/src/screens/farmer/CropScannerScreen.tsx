@@ -18,6 +18,7 @@ import { Button, ScreenWrapper } from '../../components/ui';
 import { DiagnosisHistoryList } from '../../components/scanner/DiagnosisHistoryList';
 import { useAuth } from '../../context/AuthContext';
 import { useDiagnosis } from '../../context/DiagnosisContext';
+import { useFeedback } from '../../context/FeedbackContext';
 import { diagnoseCropImage } from '../../services/api/cropDiagnosisService';
 import { FieldPicker } from '../../components/fields/FieldPicker';
 import type { FarmField } from '../../types/field';
@@ -40,6 +41,7 @@ export function CropScannerScreen({ navigation }: Props) {
   const [selectedField, setSelectedField] = useState<FarmField | null>(null);
   const { user } = useAuth();
   const { history, addDiagnosis } = useDiagnosis();
+  const { showWarning, showInfo } = useFeedback();
 
   const runDiagnosis = useCallback(
     async (uri: string) => {
@@ -49,7 +51,7 @@ export function CropScannerScreen({ navigation }: Props) {
       }
       setIsAnalyzing(true);
       try {
-        const result = await diagnoseCropImage(uri, user);
+        const { result, notice } = await diagnoseCropImage(uri, user);
         const tagged = {
           ...result,
           fieldId: selectedField?.id,
@@ -57,15 +59,22 @@ export function CropScannerScreen({ navigation }: Props) {
         };
         await addDiagnosis(tagged, selectedField ?? undefined);
         if (selectedField) await setLastSelectedFieldId(user.id, selectedField.id);
+        if (notice) {
+          if (result.confidence < 0.45) showWarning(notice);
+          else showInfo(notice);
+        }
         navigation.navigate('DiagnosisResults', { result: tagged });
         setPreviewUri(null);
       } catch {
-        Alert.alert('Analysis failed', 'Could not analyze the image. Please try again.');
+        Alert.alert(
+          'Analysis failed',
+          'Could not analyze the image. Check your connection and try a clearer photo.',
+        );
       } finally {
         setIsAnalyzing(false);
       }
     },
-    [addDiagnosis, navigation, selectedField, user],
+    [addDiagnosis, navigation, selectedField, showInfo, showWarning, user],
   );
 
   const handleCapture = async () => {
@@ -157,7 +166,8 @@ export function CropScannerScreen({ navigation }: Props) {
             <Image source={{ uri: previewUri }} style={styles.preview} />
             <View style={styles.analyzingOverlay}>
               <ActivityIndicator size="large" color={colors.white} />
-              <Text style={styles.analyzingText}>Analyzing crop…</Text>
+              <Text style={styles.analyzingText}>Analyzing your crop…</Text>
+              <Text style={styles.analyzingHint}>This usually takes a few seconds</Text>
             </View>
           </View>
         ) : Platform.OS === 'web' ? (
@@ -252,6 +262,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   analyzingText: { ...typography.body, color: colors.white, marginTop: spacing.md },
+  analyzingHint: { ...typography.caption, color: colors.white, marginTop: spacing.xs, opacity: 0.9 },
   actions: { paddingHorizontal: spacing.md, marginTop: spacing.md, gap: spacing.sm },
   fieldPicker: { paddingHorizontal: spacing.md, marginTop: spacing.sm },
   historySection: { paddingHorizontal: spacing.md, marginTop: spacing.lg },

@@ -112,7 +112,13 @@ export async function listPlantingEvents(userId: string): Promise<PlantingEventL
     });
   }
   if (isSupabaseConfigured()) {
-    return listFromSupabase(userId);
+    try {
+      return await listFromSupabase(userId);
+    } catch {
+      const local = await listFromLocal(userId);
+      if (local.length > 0) return local;
+      throw new Error('Could not load your calendar. Check your connection and try again.');
+    }
   }
   return listFromLocal(userId);
 }

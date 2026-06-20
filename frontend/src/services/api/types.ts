@@ -68,6 +68,8 @@ export interface WeatherQueryParams {
 
 export interface WeatherResponse extends WeatherData {
   plantingWindows?: PlantingRecommendation[];
+  /** Shown when live weather was unavailable and cached/placeholder data is shown. */
+  notice?: string;
 }
 
 export interface PlantingRecommendation {
@@ -84,6 +86,13 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   reply: ChatMessage;
+  /** Shown when a fallback path was used (e.g. offline, API error). */
+  notice?: string;
+}
+
+export interface DiagnosisOutcome {
+  result: DiagnosisResult;
+  notice?: string;
 }
 
 // ——— Admin ———

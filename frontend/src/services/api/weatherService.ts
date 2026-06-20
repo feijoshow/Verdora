@@ -118,7 +118,7 @@ export async function getWeather(user: User, params?: WeatherQueryParams): Promi
         ),
       };
     } catch {
-      // fall through
+      // fall through with notice below
     }
   }
 
@@ -131,16 +131,28 @@ export async function getWeather(user: User, params?: WeatherQueryParams): Promi
   }
 
   const cached = await weatherFromLastLog(user);
-  if (cached) return cached;
+  if (cached) {
+    return {
+      ...cached,
+      notice: env.openWeatherApiKey
+        ? 'Live weather unavailable — showing your last saved reading.'
+        : undefined,
+    };
+  }
 
   return {
-    location: user.location ?? 'Set your location in profile',
+    location: user.location ?? 'Set your location in Profile',
     temperature: 0,
     humidity: 0,
     condition: 'No data yet',
     icon: 'na',
-    recommendation: 'Pull down to refresh after setting your location on signup.',
+    recommendation: 'Set your region in Profile, then pull down to refresh.',
     plantingWindows: [],
+    notice: !user.location?.trim()
+      ? 'Add your town or region in Profile to load weather.'
+      : env.openWeatherApiKey
+        ? `Could not find weather for "${city ?? user.location}". Try a nearby town name in Profile.`
+        : 'Add EXPO_PUBLIC_OPENWEATHER_API_KEY for live forecasts.',
   };
 }
 

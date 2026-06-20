@@ -11,6 +11,7 @@ import { FieldPicker } from '../../components/fields/FieldPicker';
 import { Card, ScreenWrapper } from '../../components/ui';
 import { PlantingRecommendationCard } from '../../components/weather/PlantingRecommendationCard';
 import { useAuth } from '../../context/AuthContext';
+import { useFeedback } from '../../context/FeedbackContext';
 import { trackEnvironment } from '../../services/analytics/dataCollectionService';
 import { getFarmFieldById } from '../../services/fields/fieldService';
 import { getWeather } from '../../services/api/weatherService';
@@ -28,6 +29,7 @@ function weatherEmoji(icon: string): string {
 
 export function WeatherScreen() {
   const { user } = useAuth();
+  const { showWarning, showInfo } = useFeedback();
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,7 +37,7 @@ export function WeatherScreen() {
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [selectedField, setSelectedField] = useState<FarmField | null>(null);
 
-  const city = user?.location?.split(',')[0]?.trim() ?? 'Laguna';
+  const city = user?.location?.split(',')[0]?.trim();
 
   const loadWeather = useCallback(async (isRefresh = false) => {
     if (!user) return;
@@ -55,6 +57,10 @@ export function WeatherScreen() {
       });
 
       setWeather(data);
+      if (data.notice) {
+        if (data.condition === 'No data yet' || data.temperature === 0) showWarning(data.notice);
+        else showInfo(data.notice);
+      }
       await trackEnvironment(user, {
         ...data,
         location: field?.name ? `${field.name} · ${data.location}` : data.location,
@@ -75,7 +81,9 @@ export function WeatherScreen() {
     ? selectedField.latitude != null
       ? `Micro-forecast for ${selectedField.name}`
       : `Forecast for ${selectedField.name} (farm location)`
-    : `Live data for ${user?.location ?? city}`;
+    : user?.location
+      ? `Live data for ${user.location}`
+      : 'Set your location in Profile for local forecasts';
 
   return (
     <ScreenWrapper

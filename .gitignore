@@ -36,6 +36,12 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+frontend/.env
+
+# Native build artifacts
+*.apk
+*.ipa
+*.aab
 
 # typescript
 *.tsbuildinfo

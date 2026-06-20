@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import { ErrorBoundary } from '../ErrorBoundary';
 import { useAuth } from '../../context/AuthContext';
 import { RootNavigator } from '../../navigation/RootNavigator';
 import { AppSplash } from './AppSplash';
@@ -11,6 +12,7 @@ SplashScreen.preventAutoHideAsync().catch(() => undefined);
 export function AppBootstrap() {
   const { isLoading } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
 
   const handleSplashDone = useCallback(() => setSplashDone(true), []);
 
@@ -20,9 +22,13 @@ export function AppBootstrap() {
     }
   }, [isLoading, splashDone]);
 
+  const handleErrorReset = useCallback(() => setResetKey((k) => k + 1), []);
+
   return (
     <View style={styles.root}>
-      <RootNavigator showApp={splashDone && !isLoading} />
+      <ErrorBoundary key={resetKey} onReset={handleErrorReset}>
+        <RootNavigator showApp={splashDone && !isLoading} />
+      </ErrorBoundary>
       {!splashDone && <AppSplash ready={!isLoading} onDone={handleSplashDone} />}
     </View>
   );

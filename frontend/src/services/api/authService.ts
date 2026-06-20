@@ -165,10 +165,10 @@ export async function getCurrentUser(): Promise<User | null> {
   const sb = getSupabase();
   if (!sb) return null;
 
-  const { data } = await sb.auth.getSession();
-  const session = data.session;
-  if (!session?.user) return null;
+  const { data, error } = await sb.auth.getSession();
+  if (error || !data.session?.user) return null;
 
+  const session = data.session;
   const profile = await fetchUserById(session.user.id);
   if (profile) return profile;
 
@@ -179,4 +179,17 @@ export async function getCurrentUser(): Promise<User | null> {
     role: 'farmer',
     createdAt: session.user.created_at,
   };
+}
+
+/**
+ * Validates a locally stored user against the live auth session.
+ * Returns null and clears tokens when the session is missing or expired.
+ */
+export async function validateStoredUser(stored: User): Promise<User | null> {
+  const live = await getCurrentUser();
+  if (!live || live.id !== stored.id) {
+    await tokenStorage.clearTokens();
+    return null;
+  }
+  return { ...stored, ...live };
 }

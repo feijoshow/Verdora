@@ -1,5 +1,6 @@
 import { env, hasRestApi } from '../../config/env';
 import { CROP_KNOWLEDGE, DEFAULT_CROP_KNOWLEDGE } from '../../data/cropKnowledge';
+import { CROP_GUIDE_NAMES } from '../../data/cropPlantingGuide';
 import type { DiagnosisResult, User } from '../../types';
 import { generateId } from '../../utils/generateId';
 import { mimeTypeFromUri, readImageAsBase64 } from '../../utils/readImageBase64';
@@ -7,7 +8,12 @@ import { getPrimaryCropForUser, scanRecordToDiagnosis } from '../data/farmerData
 import { getUserCropScans } from '../analytics/dataCollectionService';
 import { API_ENDPOINTS, EXTERNAL_APIS } from './endpoints';
 import { apiClient, externalClient } from './client';
-import type { DiagnoseCropResponse } from './types';
+import { toApiError } from './errors';
+import type { DiagnoseCropResponse, DiagnosisOutcome } from './types';
+
+const KNOWN_CROP_NAMES = [...new Set([...Object.keys(CROP_KNOWLEDGE), ...CROP_GUIDE_NAMES])]
+  .slice(0, 24)
+  .join(', ');
 
 interface GeminiDiagnosisPayload {
   cropName?: string;
@@ -31,15 +37,17 @@ function parseGeminiDiagnosis(raw: string): GeminiDiagnosisPayload | null {
 function buildGeminiScanPrompt(user: User): string {
   const crops = user.cropsPlanted?.join(', ') ?? 'unknown';
   return (
-    `You are Verdora crop disease analyst using Gemini vision. ` +
-    `Farmer location: ${user.location ?? 'unknown'}. Registered crops: ${crops}. ` +
-    `Analyze this crop photo. Identify the crop and any visible disease or pest damage. ` +
-    `Respond ONLY with valid JSON (no markdown fences): ` +
+    `You are Verdora crop disease analyst for Namibian farmers (Gemini vision). ` +
+    `Farmer location: ${user.location ?? 'Namibia'}. Registered crops: ${crops}. ` +
+    `Prefer crop names from this list when possible: ${KNOWN_CROP_NAMES}. ` +
+    `If the image is not a crop, or is too blurry to tell, set confidence below 0.4 and explain in treatment. ` +
+    `Treatment advice should favor locally available, low-cost options when possible. ` +
+    `Respond ONLY with valid JSON (no markdown): ` +
     `{"cropName":"string","disease":"string or null if healthy","confidence":0.0,"treatment":"actionable advice"}`
   );
 }
 
-async function geminiDiagnoseCrop(imageUri: string, user: User): Promise<DiagnosisResult> {
+async function geminiDiagnoseCrop(imageUri: string, user: User): Promise<DiagnosisOutcome> {
   const { geminiApiKey } = env;
   if (!geminiApiKey) throw new Error('EXPO_PUBLIC_GEMINI_API_KEY is not set');
 
@@ -58,26 +66,49 @@ async function geminiDiagnoseCrop(imageUri: string, user: User): Promise<Diagnos
         },
       ],
     },
-    { headers: { 'Content-Type': 'application/json' } },
+    { headers: { 'Content-Type': 'application/json' }, timeout: 60000 },
   );
 
-  const rawText: string =
-    data?.candidates?.[0]?.content?.parts?.[0]?.text ??
-    'Unable to analyze image.';
-
+  const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   const parsed = parseGeminiDiagnosis(rawText);
   const fallbackCrop = (await getPrimaryCropForUser(user)) ?? 'Unknown crop';
 
+  if (!parsed) {
+    return {
+      result: {
+        id: generateId('diag'),
+        cropName: fallbackCrop,
+        disease: null,
+        confidence: 0,
+        treatment:
+          'Could not get a confident read — try a closer photo of the affected leaf in better light.',
+        imageUri,
+        scannedAt: new Date().toISOString(),
+      },
+      notice: 'Analysis was inconclusive. Try again with a clearer crop photo.',
+    };
+  }
+
+  const confidence = Math.min(1, Math.max(0, parsed.confidence ?? 0));
+  const lowConfidence = confidence < 0.45;
+
   return {
-    id: generateId('diag'),
-    cropName: parsed?.cropName?.trim() || fallbackCrop,
-    disease: parsed?.disease ?? null,
-    confidence: Math.min(1, Math.max(0, parsed?.confidence ?? 0.75)),
-    treatment:
-      parsed?.treatment?.trim() ||
-      'Monitor the plant and scan again in a few days if symptoms persist.',
-    imageUri,
-    scannedAt: new Date().toISOString(),
+    result: {
+      id: generateId('diag'),
+      cropName: parsed.cropName?.trim() || fallbackCrop,
+      disease: parsed.disease ?? null,
+      confidence,
+      treatment:
+        parsed.treatment?.trim() ||
+        (lowConfidence
+          ? 'Try a closer photo in better light for a more accurate diagnosis.'
+          : 'Monitor the plant and scan again in a few days if symptoms persist.'),
+      imageUri,
+      scannedAt: new Date().toISOString(),
+    },
+    notice: lowConfidence
+      ? 'Low confidence read — treat this as a guide, not a definitive diagnosis.'
+      : undefined,
   };
 }
 
@@ -97,26 +128,25 @@ async function apiDiagnoseCrop(imageUri: string): Promise<DiagnosisResult> {
     .then((res) => res.data);
 }
 
-/**
- * Client-side fallback when Gemini and the diagnosis API are unavailable.
- * Uses the farmer's registered crops — not fabricated sample data.
- */
 async function diagnoseFromUserCrops(
   imageUri: string,
   user: User,
-): Promise<DiagnosisResult> {
+): Promise<DiagnosisOutcome> {
   const cropName = await getPrimaryCropForUser(user);
 
   if (!cropName) {
     return {
-      id: generateId('diag'),
-      cropName: 'Unregistered crop',
-      disease: null,
-      confidence: 0,
-      treatment:
-        'Add crops in your Plantation Calendar first. Verdora diagnoses based on what you actually grow.',
-      imageUri,
-      scannedAt: new Date().toISOString(),
+      result: {
+        id: generateId('diag'),
+        cropName: 'Unregistered crop',
+        disease: null,
+        confidence: 0,
+        treatment:
+          'Add crops in your Plantation Calendar first. Verdora diagnoses based on what you actually grow.',
+        imageUri,
+        scannedAt: new Date().toISOString(),
+      },
+      notice: 'Add a crop in Calendar before scanning for best results.',
     };
   }
 
@@ -125,37 +155,56 @@ async function diagnoseFromUserCrops(
   const pick = hasDisease ? knowledge.commonDiseases[0] : null;
 
   return {
-    id: generateId('diag'),
-    cropName,
-    disease: pick?.name ?? null,
-    confidence: pick?.confidence ?? 0.9,
-    treatment: pick?.treatment ?? knowledge.healthyTreatment,
-    imageUri,
-    scannedAt: new Date().toISOString(),
+    result: {
+      id: generateId('diag'),
+      cropName,
+      disease: pick?.name ?? null,
+      confidence: pick?.confidence ?? 0.9,
+      treatment: pick?.treatment ?? knowledge.healthyTreatment,
+      imageUri,
+      scannedAt: new Date().toISOString(),
+    },
+    notice: env.geminiApiKey
+      ? 'Could not reach Gemini — showing guidance based on your registered crops.'
+      : undefined,
   };
 }
 
 export async function diagnoseCropImage(
   imageUri: string,
   user: User,
-): Promise<DiagnosisResult> {
+): Promise<DiagnosisOutcome> {
+  let lastError: unknown;
+
   if (env.geminiApiKey) {
     try {
       return await geminiDiagnoseCrop(imageUri, user);
-    } catch {
-      // fall through
+    } catch (error) {
+      lastError = error;
     }
   }
 
   if (hasRestApi) {
     try {
-      return await apiDiagnoseCrop(imageUri);
-    } catch {
-      return diagnoseFromUserCrops(imageUri, user);
+      const result = await apiDiagnoseCrop(imageUri);
+      return { result };
+    } catch (error) {
+      lastError = error;
     }
   }
 
-  return diagnoseFromUserCrops(imageUri, user);
+  const fallback = await diagnoseFromUserCrops(imageUri, user);
+  if (lastError) {
+    const msg = toApiError(lastError).message;
+    return {
+      ...fallback,
+      notice:
+        msg.includes('network') || msg.includes('timeout')
+          ? 'No connection — showing offline guidance from your crop list.'
+          : `Scan service unavailable: ${msg}`,
+    };
+  }
+  return fallback;
 }
 
 export async function fetchDiagnosisHistory(userId: string): Promise<DiagnosisResult[]> {
@@ -179,7 +228,7 @@ export async function fetchDiagnosisHistory(userId: string): Promise<DiagnosisRe
         }));
       }
     } catch {
-      // fall through to local
+      // fall through to local — history still loads from device
     }
   }
 

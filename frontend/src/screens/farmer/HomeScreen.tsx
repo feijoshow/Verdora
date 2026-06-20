@@ -91,6 +91,12 @@ export function HomeScreen({ navigation }: Props) {
         onPress={() => navigation.navigate('Calendar')}
       />
       <NavCard
+        emoji="📚"
+        title="Crop Library"
+        description="Browse crops, seasons, and planting guidance"
+        onPress={() => parentNav?.navigate('CropLibrary')}
+      />
+      <NavCard
         emoji="🌦️"
         title="Weather"
         description={`Forecasts for ${user?.location?.split(',')[0] ?? 'your area'}`}

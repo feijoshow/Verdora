@@ -5,7 +5,22 @@ import { generateId } from '../../utils/generateId';
 import { getUserCropScans, getUserFarmingRecords } from '../analytics/dataCollectionService';
 import { API_ENDPOINTS, CLAUDE_CHAT_MODEL, EXTERNAL_APIS } from './endpoints';
 import { apiPost, externalClient } from './client';
+import { toApiError } from './errors';
 import type { ChatRequest, ChatResponse } from './types';
+
+function claudeErrorMessage(error: unknown): string {
+  const msg = toApiError(error).message.toLowerCase();
+  if (msg.includes('network') || msg.includes('timeout') || msg.includes('fetch')) {
+    return 'No internet connection. Check your signal and try again.';
+  }
+  if (msg.includes('rate') || msg.includes('429') || msg.includes('overloaded')) {
+    return 'The assistant is busy right now. Wait a moment and try again.';
+  }
+  if (msg.includes('401') || msg.includes('403') || msg.includes('api key')) {
+    return 'Assistant authentication failed. Contact support if this continues.';
+  }
+  return toApiError(error).message;
+}
 
 /** Build a reply from the farmer's real profile, crops, and scan history */
 async function buildDataDrivenReply(user: User, message: string): Promise<string> {
@@ -59,18 +74,24 @@ async function localSendMessage(user: User, request: ChatRequest): Promise<ChatR
       content,
       timestamp: new Date().toISOString(),
     },
+    notice: env.claudeApiKey
+      ? 'Could not reach Claude — showing advice from your saved farm data.'
+      : undefined,
   };
 }
 
 function buildClaudeSystemPrompt(user: User): string {
-  const crops = user.cropsPlanted?.join(', ') ?? 'unknown';
+  const farmingCrops = user.cropsPlanted?.join(', ') || 'none registered yet';
+  const recentContext = user.location
+    ? `Location: ${user.location}.`
+    : 'Location: not set — ask them to update Profile.';
+
   return (
-    `You are Verdora, an agriculture assistant powered by Claude. ` +
-    `The farmer is in ${user.location ?? 'unknown location'}. They grow: ${crops}. ` +
-    `Farm type: ${user.farmerType ?? 'unspecified'}. ` +
-    `Soil: ${user.soilType ?? 'unspecified'}. ` +
-    `Give practical, concise advice using their real farm context. ` +
-    `When unsure, suggest checking the Weather tab or scanning affected plants.`
+    `You are Verdora, an agriculture assistant for Namibian farmers (powered by Claude). ` +
+    `${recentContext} Registered crops: ${farmingCrops}. ` +
+    `Farm type: ${user.farmerType ?? 'unspecified'}. Soil: ${user.soilType ?? 'unspecified'}. ` +
+    `Give practical, concise advice using their real farm context. Prefer locally available, ` +
+    `low-cost interventions when possible. When unsure, suggest the Weather tab or crop scanner.`
   );
 }
 
@@ -101,12 +122,17 @@ async function claudeSendMessage(request: ChatRequest, user: User): Promise<Chat
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true',
       },
+      timeout: 45000,
     },
   );
 
   const text =
     data?.content?.find((block: { type: string; text?: string }) => block.type === 'text')
-      ?.text ?? 'I could not generate a response. Please try again.';
+      ?.text?.trim() ?? '';
+
+  if (!text) {
+    throw new Error('The assistant returned an empty response. Please try again.');
+  }
 
   return {
     reply: {
@@ -123,23 +149,32 @@ async function apiSendMessage(request: ChatRequest): Promise<ChatResponse> {
 }
 
 export async function sendChatMessage(user: User, request: ChatRequest): Promise<ChatResponse> {
+  let lastError: unknown;
+
   if (env.claudeApiKey) {
     try {
       return await claudeSendMessage(request, user);
-    } catch {
-      // fall through
+    } catch (error) {
+      lastError = error;
     }
   }
 
   if (hasRestApi) {
     try {
       return await apiSendMessage(request);
-    } catch {
-      // fall through
+    } catch (error) {
+      lastError = error;
     }
   }
 
-  return localSendMessage(user, request);
+  const fallback = await localSendMessage(user, request);
+  if (lastError && env.claudeApiKey) {
+    return {
+      ...fallback,
+      notice: claudeErrorMessage(lastError),
+    };
+  }
+  return fallback;
 }
 
 const chatKey = (userId: string) => `@verdora_chat_${userId}`;

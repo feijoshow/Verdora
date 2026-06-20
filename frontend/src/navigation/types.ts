@@ -16,8 +16,10 @@ export type FarmerTabParamList = {
 };
 
 export type FarmerStackParamList = {
-  FarmerTabs: undefined;
+  FarmerTabs: undefined | { screen: keyof FarmerTabParamList };
   DiagnosisResults: { result: DiagnosisResult };
+  CropLibrary: undefined;
+  CropDetail: { cropName: string };
 };
 
 export type AdminStackParamList = {
