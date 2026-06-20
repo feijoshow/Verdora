@@ -24,4 +24,10 @@ export const env = {
   /** Supabase — required for auth and cloud data sync */
   supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+
+  /** Show demo login shortcuts and enable demo docs (set to 1 for tester builds) */
+  demoMode: process.env.EXPO_PUBLIC_DEMO_MODE === '1',
+
+  /** Tester feedback inbox for Profile mailto link */
+  feedbackEmail: process.env.EXPO_PUBLIC_FEEDBACK_EMAIL ?? '',
 } as const;

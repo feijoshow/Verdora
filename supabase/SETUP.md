@@ -86,7 +86,14 @@ Both options produce the same database. Use Option B if you want to inspect each
 
 3. Log out and back in — the app routes admin users to the admin dashboard.
 
-## 6. Deploy nightly aggregation (optional)
+## 6. Demo / tester build (optional)
+
+For stakeholder demos and structured testing:
+
+1. Follow [`DEMO_SETUP.md`](DEMO_SETUP.md) — demo accounts, `seed_demo.sql`, and `EXPO_PUBLIC_DEMO_MODE`.
+2. Use the 90-second walkthrough in [`docs/DEMO_SCRIPT.md`](../docs/DEMO_SCRIPT.md).
+
+## 7. Deploy nightly aggregation (optional)
 
 See [`functions/README.md`](functions/README.md) to deploy the `nightly-aggregation` Edge Function and schedule it (`0 2 * * *`).
 

@@ -26,6 +26,9 @@ const REGION_COORDS: Record<string, { lat: number; lng: number }> = {
   'nairobi, kenya': { lat: -1.2921, lng: 36.8219 },
   'lagos, nigeria': { lat: 6.5244, lng: 3.3792 },
   'java, indonesia': { lat: -7.6145, lng: 110.2038 },
+  'oshakati, namibia': { lat: -17.783, lng: 15.683 },
+  'windhoek, namibia': { lat: -22.5609, lng: 17.0658 },
+  'namibia': { lat: -22.5609, lng: 17.0658 },
   'hq': { lat: 0, lng: 0 },
 };
 

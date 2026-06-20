@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Input, ScreenWrapper } from '../../components/ui';
 import { PrivacySettingsCard } from '../../components/privacy/PrivacySettingsCard';
 import { FieldsManager } from '../../components/fields/FieldsManager';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
+import { buildFeedbackMailtoUrl } from '../../constants/support';
 import { useAuth } from '../../context/AuthContext';
 import type { FarmerType, User } from '../../types';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
@@ -52,6 +53,23 @@ export function ProfileScreen() {
   }, [user]);
 
   if (!user || user.role !== 'farmer') return null;
+
+  const handleFeedback = async () => {
+    const url = buildFeedbackMailtoUrl({
+      userEmail: user.email,
+      userName: user.name,
+    });
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) {
+        Alert.alert('Email not available', 'Set up an email app on this device to send feedback.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Could not open email', 'Try again or contact support from another device.');
+    }
+  };
 
   const handleSave = async () => {
     if (!region.trim() && !village.trim()) {
@@ -108,13 +126,13 @@ export function ProfileScreen() {
           label="Region / province"
           value={region}
           onChangeText={setRegion}
-          placeholder="e.g. Laguna, Philippines"
+          placeholder="e.g. Oshana, Namibia"
         />
         <Input
           label="Village / town"
           value={village}
           onChangeText={setVillage}
-          placeholder="e.g. Calamba"
+          placeholder="e.g. Oshakati"
         />
       </Card>
 
@@ -159,6 +177,14 @@ export function ProfileScreen() {
       </Card>
 
       <PrivacySettingsCard />
+
+      <Card style={styles.card}>
+        <Text style={styles.sectionLabel}>Tester feedback</Text>
+        <Text style={styles.hint}>
+          Found a bug or have a suggestion? Send us a quick email — include what you were doing when it happened.
+        </Text>
+        <Button title="Send feedback" variant="outline" onPress={handleFeedback} fullWidth />
+      </Card>
 
       <Button title="Save profile" onPress={handleSave} loading={saving} fullWidth />
 

@@ -45,6 +45,8 @@ Verdora/
 
 3. **First use** — open the app and tap **Create Account** to register a farmer account.
 
+For demos and tester builds, see [`supabase/DEMO_SETUP.md`](supabase/DEMO_SETUP.md) and [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+
 ## Environment
 
 Copy `frontend/.env.example` to `frontend/.env`. Required:

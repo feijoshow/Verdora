@@ -56,7 +56,7 @@ export function RegisterScreen({ navigation }: Props) {
       <Text style={styles.title}>Join Verdora</Text>
       <Text style={styles.subtitle}>Agricultural intelligence for your farm</Text>
 
-      <Input label="Full name (optional)" value={name} onChangeText={setName} placeholder="Maria Santos" />
+      <Input label="Full name (optional)" value={name} onChangeText={setName} placeholder="Maria Shikongo" />
       <Input
         label="Email *"
         value={email}
@@ -69,7 +69,7 @@ export function RegisterScreen({ navigation }: Props) {
         label="Location * (region for insights)"
         value={location}
         onChangeText={setLocation}
-        placeholder="Province, Country — e.g. Laguna, Philippines"
+        placeholder="e.g. Oshana, Namibia"
       />
       <Input
         label="Farm size (optional)"
