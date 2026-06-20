@@ -7,6 +7,7 @@ import { colors, logoSize, spacing, typography } from '../../constants/theme';
 const LOGO = require('../../../assets/verdora-logo.png');
 const SPLASH_SEEN_KEY = '@verdora_splash_seen';
 const MIN_SPLASH_MS_FIRST = 2800;
+const MIN_SPLASH_MS_RETURN = 1200;
 const useNativeDriver = Platform.OS !== 'web';
 
 interface AppSplashProps {
