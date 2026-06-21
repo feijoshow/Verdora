@@ -8,7 +8,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { colors, borderRadius, spacing } from '../../constants/theme';
+import { colors, borderRadius, spacing, shadows } from '../../constants/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   fullWidth: { width: '100%' },
-  primary: { backgroundColor: colors.primary },
+  primary: { backgroundColor: colors.primary, ...shadows.button },
   secondary: { backgroundColor: colors.secondary },
   outline: {
     backgroundColor: 'transparent',

@@ -13,7 +13,7 @@ Use this document before handing a build to testers. All refinement phases (1–
 - [ ] `cd frontend && npm install` completes without errors
 - [ ] `frontend/.env` exists (copy from `.env.example`) — **never commit**
 - [ ] `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` set
-- [ ] Supabase schema applied (`supabase/schema.sql` or migrations 001–003)
+- [ ] Supabase schema applied (`supabase/schema.sql` or migrations 001–004)
 - [ ] Supabase **Email** auth enabled; **Confirm email** disabled for instant signup (recommended for test round)
 - [ ] Optional keys set for full AI/weather demo:
   - [ ] `EXPO_PUBLIC_AI_API_URL=http://localhost:3001` + `ZAI_API_KEY` in `api/.env` — Scanner (recommended)
@@ -74,8 +74,10 @@ Walkthrough: [`docs/DEMO_SCRIPT.md`](./DEMO_SCRIPT.md)
 | 2 | Chat answer mentions registered crops or location | ☐ | |
 | 3 | Scanner: non-crop or blurry photo → low confidence / retry message (not a calendar crop guess) | ☐ | |
 | 4 | Scanner: crop name aligns with library (e.g. Mahango, Tomato) via Z.ai GLM-4.6V-Flash | ☐ | |
-| 5 | Weather for Oshakati / Windhoek resolves (not wrong country) | ☐ | |
+| 5 | Weather for Oshakati / Windhoek resolves (not wrong country) | ☐ | Uses structured town name for geocoding |
 | 6 | Weather planting cards reference season, not generic humidity only | ☐ | |
+| 7 | Register & Profile use region → town picker (not free-text location) | ☐ | "My village isn't listed" path works for rural areas |
+| 8 | Chat mentions structured location (e.g. Oshakati, Oshana region) | ☐ | |
 
 ---
 
@@ -110,19 +112,74 @@ Walkthrough: [`docs/DEMO_SCRIPT.md`](./DEMO_SCRIPT.md)
 
 ---
 
-## 9. Platform matrix
+## 9. Android APK build (EAS sideload)
+
+Play Store verification is **not** required for this step — sideload the APK directly to testers. No Google Play Console involved.
+
+### One-time setup
+
+- [ ] Expo account at [expo.dev](https://expo.dev) with EAS Build minutes available (check **Usage** before starting)
+- [ ] `frontend/eas.json` present — `preview` profile builds an **APK** (`buildType: "apk"`)
+- [ ] `frontend/app.json` has `android.package` (`com.verdora.app`)
+- [ ] Install EAS CLI: `npm install -g eas-cli` (or use `npx eas-cli`)
+- [ ] From `frontend/`: `eas login` then `eas build:configure` (links project; adds `extra.eas.projectId` to `app.json`)
+
+### EAS secrets (required for tester phones)
+
+`EXPO_PUBLIC_AI_API_URL=http://localhost:3001` only works on your dev machine — **not on physical devices**. For the APK, set project secrets (or use direct API keys):
+
+```bash
+cd frontend
+eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL --value "https://YOUR_PROJECT.supabase.co"
+eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "YOUR_ANON_KEY"
+eas secret:create --scope project --name EXPO_PUBLIC_ZAI_API_KEY --value "YOUR_ZAI_KEY"
+eas secret:create --scope project --name EXPO_PUBLIC_OPENWEATHER_API_KEY --value "YOUR_OPENWEATHER_KEY"
+eas secret:create --scope project --name EXPO_PUBLIC_DEMO_MODE --value "1"
+```
+
+Optional: `EXPO_PUBLIC_FEEDBACK_EMAIL`, `EXPO_PUBLIC_GROK_API_KEY` (chat fallback if not using Z.ai for chat).
+
+- [ ] Supabase migration **004** applied (`supabase/migrations/004_structured_location.sql`)
+- [ ] `npm run verify` passes on the commit you will build from
+
+### Build and tag
+
+Tag **before** sharing the APK link so you always know what code testers have:
+
+```bash
+git checkout testing
+git pull origin testing
+git tag -a v1.0.0-test1 -m "First tester round: June 2026 (phases 1–5)"
+git push origin v1.0.0-test1
+
+cd frontend
+eas build --platform android --profile preview
+```
+
+When the build finishes, EAS provides a download URL.
+
+### Distribute to testers
+
+- [ ] Share the EAS build link **or** download the `.apk` and send via WhatsApp / email / Drive
+- [ ] Tell testers: first install may prompt **Install unknown apps** for their browser or file manager (one-time permission)
+- [ ] Include tag name `v1.0.0-test1` in handoff notes
+
+---
+
+## 10. Platform matrix
 
 | Platform | Tested | Tester name | Date |
 |----------|--------|-------------|------|
 | iOS Expo Go | ☐ | | |
+| Android APK (EAS sideload) | ☐ | | |
 | Android Expo Go | ☐ | | |
 | Web (smoke) | ☐ | | |
 
 ---
 
-## 10. Handoff to testers
+## 11. Handoff to testers
 
-- [ ] Share `testing` branch name or tag `v1.0.0-test1`
+- [ ] Share APK link from EAS build (section 9) or `testing` tag `v1.0.0-test1`
 - [ ] Share Supabase project URL (test environment only)
 - [ ] Share demo credentials or ask testers to self-register
 - [ ] Point to **Profile → Send feedback** for bug reports
@@ -130,9 +187,9 @@ Walkthrough: [`docs/DEMO_SCRIPT.md`](./DEMO_SCRIPT.md)
 
 ---
 
-## 11. Tag the build
+## 12. Tag the build
 
-When all critical items pass:
+When all critical items pass (tag the commit **before** `eas build` — see section 9):
 
 ```bash
 git checkout testing

@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 4,
     fontSize: 16,
     color: colors.text,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.primarySoft,
   },
   inputError: { borderColor: colors.error },
   error: { ...typography.caption, color: colors.error, marginTop: spacing.xs },

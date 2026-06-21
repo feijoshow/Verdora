@@ -243,7 +243,25 @@ export async function getLastEnvironmentLog(userId: string): Promise<Environment
 
 export async function updateFarmerProfile(
   userId: string,
-  updates: Partial<Pick<User, 'name' | 'soilType' | 'farmingMethods' | 'farmSize' | 'farmerType' | 'location' | 'region' | 'village'>>,
+  updates: Partial<
+    Pick<
+      User,
+      | 'name'
+      | 'soilType'
+      | 'farmingMethods'
+      | 'farmSize'
+      | 'farmerType'
+      | 'location'
+      | 'regionId'
+      | 'regionName'
+      | 'townId'
+      | 'townName'
+      | 'constituency'
+      | 'isCustomTown'
+      | 'region'
+      | 'village'
+    >
+  >,
 ): Promise<void> {
   const db = await loadDb();
   const user = db.users.find((u) => u.id === userId);

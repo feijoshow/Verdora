@@ -1,0 +1,7 @@
+.expo-bundle-test2/
+.expo-bundle-test3/
+.expo/web/cache/
+android/
+ios/
+dist/
+eas-build-log.txt

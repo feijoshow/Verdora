@@ -13,7 +13,13 @@ create table if not exists public.users (
   email text not null,
   name text not null default 'Farmer',
   role text not null check (role in ('farmer', 'admin')),
-  location text,
+  location_legacy text,
+  region_id text,
+  region_name text,
+  town_id text,
+  town_name text,
+  constituency text,
+  is_custom_town boolean not null default false,
   latitude double precision,
   longitude double precision,
   farm_size text,
@@ -28,7 +34,8 @@ create table if not exists public.users (
 );
 
 create index if not exists idx_users_role on public.users (role);
-create index if not exists idx_users_location on public.users (location);
+create index if not exists idx_users_location_legacy on public.users (location_legacy);
+create index if not exists idx_users_region_id on public.users (region_id);
 
 -- ─── FIELDS (multi-plot farms) — must exist before crops/scans FKs ───
 create table if not exists public.fields (

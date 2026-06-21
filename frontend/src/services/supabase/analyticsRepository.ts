@@ -9,20 +9,27 @@ import type {
   UserProfileRecord,
 } from '../../types/analytics';
 import type { DbChatLog, DbCrop, DbScan, DbUser, DbWeatherLog } from '../../types/database';
+import { getUserLocationDisplay } from '../../utils/locationHelpers';
 import { isSupabaseConfigured } from './client';
 import { fetchAllChatLogs } from './repositories/chatRepository';
 import { fetchAllCrops } from './repositories/cropsRepository';
 import { fetchAllScans } from './repositories/scansRepository';
-import { fetchAllUsers } from './repositories/usersRepository';
+import { dbUserToUser, fetchAllUsers } from './repositories/usersRepository';
 import { fetchAllWeatherLogs } from './repositories/weatherRepository';
 
 function dbUserToProfile(u: DbUser): UserProfileRecord {
-  return {
+  const profile: UserProfileRecord = {
     id: u.id,
     email: u.email,
     name: u.name,
     role: u.role,
-    location: u.location ?? undefined,
+    locationLegacy: u.location_legacy ?? undefined,
+    regionId: u.region_id ?? undefined,
+    regionName: u.region_name ?? undefined,
+    townId: u.town_id ?? undefined,
+    townName: u.town_name ?? undefined,
+    constituency: u.constituency ?? undefined,
+    isCustomTown: u.is_custom_town,
     latitude: u.latitude ?? undefined,
     longitude: u.longitude ?? undefined,
     farmSize: u.farm_size ?? undefined,
@@ -34,6 +41,8 @@ function dbUserToProfile(u: DbUser): UserProfileRecord {
     dataConsent: u.data_consent,
     createdAt: u.created_at,
   };
+  profile.location = getUserLocationDisplay(profile);
+  return profile;
 }
 
 function dbScanToRecord(s: DbScan, users: Map<string, DbUser>): CropScanRecord {
@@ -42,7 +51,7 @@ function dbScanToRecord(s: DbScan, users: Map<string, DbUser>): CropScanRecord {
     id: s.id,
     userId: s.user_id,
     userName: u?.name ?? 'Unknown',
-    location: s.location ?? u?.location ?? 'Unknown',
+    location: s.location ?? (u ? getUserLocationDisplay(dbUserToUser(u)) : undefined) ?? 'Unknown',
     latitude: s.latitude ?? u?.latitude ?? undefined,
     longitude: s.longitude ?? u?.longitude ?? undefined,
     imageUri: s.image_url ?? undefined,

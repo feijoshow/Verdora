@@ -5,3 +5,4 @@ export { ScreenWrapper } from './ScreenWrapper';
 export { ScreenLoader } from './ScreenLoader';
 export { InlineLoader } from './InlineLoader';
 export { EmptyState } from './EmptyState';
+export { SectionLabel } from './SectionLabel';

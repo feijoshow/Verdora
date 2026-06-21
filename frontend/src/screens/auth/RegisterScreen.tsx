@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { LocationPicker } from '../../components/location/LocationPicker';
 import { ConsentNotice } from '../../components/privacy/ConsentNotice';
 import { Button, Input, ScreenWrapper } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import type { VerdoraLocation } from '../../data/namibiaLocations';
 import type { FarmerType } from '../../types';
+import { isValidVerdoraLocation } from '../../utils/locationHelpers';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -20,7 +23,8 @@ export function RegisterScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState<VerdoraLocation | null>(null);
+  const [locationError, setLocationError] = useState('');
   const [farmSize, setFarmSize] = useState('');
   const [farmerType, setFarmerType] = useState<FarmerType>('small-scale');
   const [dataConsent, setDataConsent] = useState(false);
@@ -29,8 +33,14 @@ export function RegisterScreen({ navigation }: Props) {
 
   const handleRegister = async () => {
     setError('');
-    if (!email || !password || !location.trim()) {
-      setError('Email, password, and location are required');
+    setLocationError('');
+    if (!email || !password) {
+      setError('Email and password are required');
+      return;
+    }
+    if (!isValidVerdoraLocation(location)) {
+      setLocationError('Please select your region and town/village');
+      setError('Location is required');
       return;
     }
     if (!dataConsent) {
@@ -42,7 +52,7 @@ export function RegisterScreen({ navigation }: Props) {
       name: name || undefined,
       email,
       password,
-      location: location.trim(),
+      location,
       farmSize: farmSize.trim() || undefined,
       farmerType,
       dataConsent: true,
@@ -65,12 +75,17 @@ export function RegisterScreen({ navigation }: Props) {
         keyboardType="email-address"
       />
       <Input label="Password *" value={password} onChangeText={setPassword} secureTextEntry />
-      <Input
-        label="Location * (region for insights)"
+
+      <LocationPicker
+        label="Location *"
         value={location}
-        onChangeText={setLocation}
-        placeholder="e.g. Oshana, Namibia"
+        onChange={(next) => {
+          setLocation(next);
+          setLocationError('');
+        }}
+        error={locationError}
       />
+
       <Input
         label="Farm size (optional)"
         value={farmSize}

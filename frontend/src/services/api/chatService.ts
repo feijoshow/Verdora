@@ -3,44 +3,55 @@ import { Platform } from 'react-native';
 import { hasAiApi, env } from '../../config/env';
 import type { ChatMessage, User } from '../../types';
 import { generateId } from '../../utils/generateId';
+import { getChatLocationLabel } from '../../utils/locationHelpers';
 import { buildChatSystemPrompt, isNamibiaDrySeason } from '../ai/farmerContext';
 import { findPlantingGuide } from '../calendar/plantingGuideService';
 import { getUserCropScans, getUserFarmingRecords } from '../analytics/dataCollectionService';
 import { getSupabase, isSupabaseConfigured } from '../supabase/client';
-import { API_ENDPOINTS, EXTERNAL_APIS, GROK_CHAT_MODEL } from './endpoints';
+import { API_ENDPOINTS, EXTERNAL_APIS, GROK_CHAT_MODEL, ZAI_CHAT_MODEL, ZAI_CHAT_COMPLETIONS_URL } from './endpoints';
 import { aiApiPost, externalClient } from './client';
 import { toApiError } from './errors';
 import type { ChatRequest, ChatResponse } from './types';
 
-interface GrokCompletionResponse {
+interface ChatCompletionResponse {
   choices?: { message?: { content?: string } }[];
   error?: { message?: string };
 }
 
 function chatErrorMessage(error: unknown): string {
-  const msg = toApiError(error).message.toLowerCase();
-  if (msg.includes('network') || msg.includes('timeout') || msg.includes('fetch')) {
-    if (Platform.OS === 'web') {
-      return 'Chat AI blocked in browser. Deploy the chat-grok Supabase function, or use the mobile app.';
-    }
-    return 'No internet connection. Check your signal and try again.';
+  const apiError = toApiError(error);
+  const msg = apiError.message;
+  const lower = msg.toLowerCase();
+  const status = apiError.status;
+  const code = apiError.code?.toUpperCase();
+
+  // Server returned a concrete error — show it as-is
+  if (status && status >= 400) {
+    return msg;
   }
-  if (msg.includes('rate') || msg.includes('429') || msg.includes('overloaded')) {
+
+  if (code === 'ECONNABORTED' || lower.includes('timeout exceeded') || lower.includes('timed out')) {
+    return 'The assistant took too long to respond. Try again with a shorter question.';
+  }
+
+  if (
+    lower === 'network error' ||
+    lower.includes('econnrefused') ||
+    lower.includes('enotfound') ||
+    lower.includes('failed to fetch')
+  ) {
+    return 'Could not reach the assistant API at localhost:3001. Confirm npm run api:dev is running.';
+  }
+
+  if (status === 429 || lower.includes('429') || lower.includes('rate limit')) {
     return 'The assistant is busy right now. Wait a moment and try again.';
   }
-  if (status === 403 || msg.includes('403') || msg.includes('rejected') || msg.includes('credits')) {
-    if (msg.includes('credits') || msg.includes('licenses')) {
-      return 'Grok account has no credits yet. Add credits at console.x.ai, then restart npm run api:dev.';
-    }
-    return 'Grok API key rejected. Regenerate at console.x.ai, update api/.env, restart npm run api:dev.';
+
+  if (lower.includes('zai_api_key') || lower.includes('not configured on the api')) {
+    return 'Chat API missing ZAI_API_KEY — set it in api/.env and restart the server.';
   }
-  if (msg.includes('edge function') || msg.includes('functions/v1/chat-grok')) {
-    return 'Chat proxy not deployed. Start the local API (npm run api:dev) or deploy chat-grok.';
-  }
-  if (msg.includes('xai_api_key') || msg.includes('not configured on the api')) {
-    return 'Chat API missing XAI_API_KEY — set it in api/.env and restart the server.';
-  }
-  return toApiError(error).message;
+
+  return msg;
 }
 
 function extractCropQuestion(message: string): string | null {
@@ -91,7 +102,7 @@ async function buildDataDrivenReply(user: User, message: string): Promise<string
   const crops = [
     ...new Set([...(user.cropsPlanted ?? []), ...farming.map((r) => r.cropName)]),
   ];
-  const location = user.location ?? 'your region';
+  const location = getChatLocationLabel(user);
   const cropList = crops.length > 0 ? crops.join(', ') : 'no crops registered yet';
 
   const lastScan = scans[0];
@@ -152,7 +163,7 @@ async function localSendMessage(user: User, request: ChatRequest): Promise<ChatR
   };
 }
 
-function parseGrokResponse(data: GrokCompletionResponse): string {
+function parseChatResponse(data: ChatCompletionResponse): string {
   if (data?.error?.message) {
     throw new Error(data.error.message);
   }
@@ -165,7 +176,7 @@ function parseGrokResponse(data: GrokCompletionResponse): string {
   return text;
 }
 
-async function buildGrokMessages(request: ChatRequest, user: User) {
+async function buildChatMessages(request: ChatRequest, user: User) {
   const systemPrompt = await buildChatSystemPrompt(user);
   return [
     { role: 'system' as const, content: systemPrompt },
@@ -177,24 +188,7 @@ async function buildGrokMessages(request: ChatRequest, user: User) {
   ];
 }
 
-async function grokSendMessageViaProxy(request: ChatRequest, user: User): Promise<ChatResponse> {
-  const sb = getSupabase();
-  if (!sb) throw new Error('Supabase is not configured');
-
-  const messages = await buildGrokMessages(request, user);
-  const { data, error } = await sb.functions.invoke<GrokCompletionResponse>('chat-grok', {
-    body: {
-      model: GROK_CHAT_MODEL,
-      max_tokens: 1024,
-      reasoning_effort: 'none',
-      messages,
-    },
-  });
-
-  if (error) throw new Error(error.message);
-
-  const text = parseGrokResponse(data ?? {});
-
+function toChatResponse(text: string): ChatResponse {
   return {
     reply: {
       id: generateId('msg'),
@@ -205,13 +199,58 @@ async function grokSendMessageViaProxy(request: ChatRequest, user: User): Promis
   };
 }
 
+async function zaiSendMessageDirect(request: ChatRequest, user: User): Promise<ChatResponse> {
+  const { zaiApiKey } = env;
+  if (!zaiApiKey) throw new Error('EXPO_PUBLIC_ZAI_API_KEY is not set');
+
+  const messages = await buildChatMessages(request, user);
+
+  const { data } = await externalClient.post<ChatCompletionResponse>(
+    ZAI_CHAT_COMPLETIONS_URL,
+    {
+      model: ZAI_CHAT_MODEL,
+      max_tokens: 1024,
+      temperature: 0.7,
+      messages,
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${zaiApiKey}`,
+      },
+      timeout: 60000,
+    },
+  );
+
+  return toChatResponse(parseChatResponse(data));
+}
+
+async function grokSendMessageViaProxy(request: ChatRequest, user: User): Promise<ChatResponse> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase is not configured');
+
+  const messages = await buildChatMessages(request, user);
+  const { data, error } = await sb.functions.invoke<ChatCompletionResponse>('chat-grok', {
+    body: {
+      model: GROK_CHAT_MODEL,
+      max_tokens: 1024,
+      reasoning_effort: 'none',
+      messages,
+    },
+  });
+
+  if (error) throw new Error(error.message);
+
+  return toChatResponse(parseChatResponse(data ?? {}));
+}
+
 async function grokSendMessageDirect(request: ChatRequest, user: User): Promise<ChatResponse> {
   const { grokApiKey } = env;
   if (!grokApiKey) throw new Error('EXPO_PUBLIC_GROK_API_KEY is not set');
 
-  const messages = await buildGrokMessages(request, user);
+  const messages = await buildChatMessages(request, user);
 
-  const { data } = await externalClient.post<GrokCompletionResponse>(
+  const { data } = await externalClient.post<ChatCompletionResponse>(
     EXTERNAL_APIS.grok,
     {
       model: GROK_CHAT_MODEL,
@@ -228,16 +267,7 @@ async function grokSendMessageDirect(request: ChatRequest, user: User): Promise<
     },
   );
 
-  const text = parseGrokResponse(data);
-
-  return {
-    reply: {
-      id: generateId('msg'),
-      role: 'assistant',
-      content: text,
-      timestamp: new Date().toISOString(),
-    },
-  };
+  return toChatResponse(parseChatResponse(data));
 }
 
 async function grokSendMessage(request: ChatRequest, user: User): Promise<ChatResponse> {
@@ -263,7 +293,7 @@ async function apiSendMessage(request: ChatRequest, user: User): Promise<ChatRes
   return aiApiPost<ChatResponse>(
     API_ENDPOINTS.chat.message,
     { ...request, systemPrompt },
-    { timeout: 60000 },
+    { timeout: 120000 },
   );
 }
 
@@ -275,8 +305,18 @@ export async function sendChatMessage(user: User, request: ChatRequest): Promise
       if (__DEV__) {
         console.warn('[Chat API] failed:', toApiError(error).message);
       }
-      const fallback = await localSendMessage(user, request);
-      return { ...fallback, notice: chatErrorMessage(error) };
+      throw new Error(chatErrorMessage(error));
+    }
+  }
+
+  if (env.zaiApiKey) {
+    try {
+      return await zaiSendMessageDirect(request, user);
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[Z.ai chat] failed:', toApiError(error).message);
+      }
+      throw new Error(chatErrorMessage(error));
     }
   }
 

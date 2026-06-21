@@ -1,14 +1,21 @@
 import type { User } from '../../../types';
 import type { DbUser, InsertDbUser } from '../../../types/database';
+import { getUserLocationDisplay } from '../../../utils/locationHelpers';
 import { getSupabase, isSupabaseConfigured } from '../client';
 
 export function dbUserToUser(row: DbUser): User {
-  return {
+  const user: User = {
     id: row.id,
     email: row.email,
     name: row.name,
     role: row.role,
-    location: row.location ?? undefined,
+    locationLegacy: row.location_legacy ?? undefined,
+    regionId: row.region_id ?? undefined,
+    regionName: row.region_name ?? undefined,
+    townId: row.town_id ?? undefined,
+    townName: row.town_name ?? undefined,
+    constituency: row.constituency ?? undefined,
+    isCustomTown: row.is_custom_town,
     latitude: row.latitude ?? undefined,
     longitude: row.longitude ?? undefined,
     farmSize: row.farm_size ?? undefined,
@@ -21,6 +28,10 @@ export function dbUserToUser(row: DbUser): User {
     dataConsentAt: row.data_consent_at ?? undefined,
     createdAt: row.created_at,
   };
+  user.location = getUserLocationDisplay(user);
+  if (user.regionName) user.region = user.regionName;
+  if (user.townName) user.village = user.townName;
+  return user;
 }
 
 export function userToDbRow(user: User, dataConsent: boolean): InsertDbUser {
@@ -30,7 +41,13 @@ export function userToDbRow(user: User, dataConsent: boolean): InsertDbUser {
     email: user.email,
     name: user.name,
     role: user.role,
-    location: user.location ?? null,
+    location_legacy: user.locationLegacy ?? null,
+    region_id: user.regionId ?? null,
+    region_name: user.regionName ?? null,
+    town_id: user.townId ?? null,
+    town_name: user.townName ?? null,
+    constituency: user.constituency ?? null,
+    is_custom_town: user.isCustomTown ?? false,
     latitude: user.latitude ?? null,
     longitude: user.longitude ?? null,
     farm_size: user.farmSize ?? null,

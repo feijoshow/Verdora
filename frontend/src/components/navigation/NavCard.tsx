@@ -1,19 +1,24 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius, shadows } from '../../constants/theme';
 
+type IonIconName = React.ComponentProps<typeof Ionicons>['name'];
+
 interface NavCardProps {
-  emoji: string;
+  icon: IonIconName;
   title: string;
   description: string;
   badge?: string | number;
   onPress: () => void;
 }
 
-export function NavCard({ emoji, title, description, badge, onPress }: NavCardProps) {
+export function NavCard({ icon, title, description, badge, onPress }: NavCardProps) {
   return (
     <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={onPress}>
-      <Text style={styles.emoji}>{emoji}</Text>
+      <View style={styles.iconWrap}>
+        <Ionicons name={icon} size={22} color={colors.primary} />
+      </View>
       <View style={styles.content}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{title}</Text>
@@ -25,7 +30,7 @@ export function NavCard({ emoji, title, description, badge, onPress }: NavCardPr
         </View>
         <Text style={styles.description}>{description}</Text>
       </View>
-      <Text style={styles.chevron}>›</Text>
+      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
     </Pressable>
   );
 }
@@ -42,9 +47,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadows.card,
   },
-  pressed: { opacity: 0.92 },
-  emoji: { fontSize: 28, marginRight: spacing.md },
-  content: { flex: 1 },
+  pressed: { opacity: 0.92, transform: [{ scale: 0.995 }] },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  content: { flex: 1, paddingRight: spacing.sm },
   titleRow: { flexDirection: 'row', alignItems: 'center' },
   title: { ...typography.h3, fontSize: 16, color: colors.primaryDark },
   badge: {
@@ -55,6 +68,5 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   badgeText: { ...typography.caption, color: colors.white, fontWeight: '700' },
-  description: { ...typography.caption, marginTop: 2 },
-  chevron: { fontSize: 22, color: colors.textMuted, marginLeft: spacing.sm },
+  description: { ...typography.caption, marginTop: 4, lineHeight: 18 },
 });

@@ -1,5 +1,6 @@
 import { hasRestApi, env } from '../../config/env';
 import type { User, WeatherData } from '../../types';
+import { getUserLocationDisplay, getWeatherGeocodeQuery } from '../../utils/locationHelpers';
 import { getLastEnvironmentLog, getUserFarmingRecords } from '../analytics/dataCollectionService';
 import {
   buildSeasonalCropRecommendations,
@@ -84,7 +85,8 @@ async function apiGetWeather(params?: WeatherQueryParams): Promise<WeatherRespon
 }
 
 export async function getWeather(user: User, params?: WeatherQueryParams): Promise<WeatherResponse> {
-  const city = params?.city ?? user.location?.split(',')[0]?.trim();
+  const geocodeTown = getWeatherGeocodeQuery(user);
+  const city = params?.city ?? geocodeTown;
   const query = { ...params, city };
 
   const farming = await getUserFarmingRecords(user.id);
@@ -105,7 +107,7 @@ export async function getWeather(user: User, params?: WeatherQueryParams): Promi
       const weather = await openWeatherGetCurrent(query);
       const locationLabel = fieldId && fieldRecords[0]?.fieldName
         ? `${fieldRecords[0].fieldName} · ${weather.location}`
-        : user.location ?? weather.location;
+        : getUserLocationDisplay(user) ?? weather.location;
       return {
         ...weather,
         location: locationLabel,
@@ -138,18 +140,19 @@ export async function getWeather(user: User, params?: WeatherQueryParams): Promi
     };
   }
 
+  const displayLocation = getUserLocationDisplay(user);
   return {
-    location: user.location ?? 'Set your location in Profile',
+    location: displayLocation ?? 'Set your location in Profile',
     temperature: 0,
     humidity: 0,
     condition: 'No data yet',
     icon: 'na',
     recommendation: 'Set your region in Profile, then pull down to refresh.',
     plantingWindows: [],
-    notice: !user.location?.trim()
+    notice: !displayLocation?.trim()
       ? 'Add your town or region in Profile to load weather.'
       : env.openWeatherApiKey
-        ? `Could not find weather for "${city ?? user.location}". Try a nearby town name in Profile.`
+        ? `Could not find weather for "${city ?? geocodeTown ?? displayLocation}". Try a nearby town name in Profile.`
         : 'Add EXPO_PUBLIC_OPENWEATHER_API_KEY for live forecasts.',
   };
 }

@@ -1,3 +1,4 @@
+import { getChatLocationLabel } from '../../utils/locationHelpers';
 import { env, hasAiApi } from '../../config/env';
 import {
   GEMINI_CROP_CATALOG,
@@ -71,7 +72,7 @@ function buildVisionScanPrompt(user: User): string {
   const crops = user.cropsPlanted?.join(', ') ?? 'unknown';
   return (
     `You are Verdora crop disease analyst for Namibian farmers. ` +
-    `Farmer location: ${user.location ?? 'Namibia'}. Registered crops: ${crops}. ` +
+    `Farmer location: ${getChatLocationLabel(user)}. Registered crops: ${crops}. ` +
     `Use crop names ONLY from this catalog when possible: ${GEMINI_CROP_CATALOG}. ` +
     `If the image is not a plant/crop (e.g. person, tool, soil only, sky, wall), set cropName to "not a crop" and confidence below 0.3. ` +
     `If the image is too blurry or too far away to identify, set confidence below 0.4 and say so in treatment. ` +

@@ -9,7 +9,7 @@ import { PlantationCalendarScreen } from '../screens/farmer/PlantationCalendarSc
 import { WeatherScreen } from '../screens/farmer/WeatherScreen';
 import { ChatScreen } from '../screens/farmer/ChatScreen';
 import { ProfileScreen } from '../screens/farmer/ProfileScreen';
-import { colors } from '../constants/theme';
+import { colors, shadows } from '../constants/theme';
 import type { FarmerTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<FarmerTabParamList>();
@@ -51,12 +51,13 @@ export function FarmerTabNavigator() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          paddingTop: 6,
+          borderTopWidth: 0,
+          paddingTop: 8,
           height: tabBarHeight,
           paddingBottom: Math.max(insets.bottom, 8),
+          ...shadows.tabBar,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginBottom: 2, letterSpacing: 0.2 },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Hub' }} />

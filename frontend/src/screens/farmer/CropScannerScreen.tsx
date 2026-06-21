@@ -14,7 +14,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
-import { Button, InlineLoader, ScreenWrapper } from '../../components/ui';
+import { Button, InlineLoader, ScreenWrapper, SectionLabel } from '../../components/ui';
 import { DiagnosisHistoryList } from '../../components/scanner/DiagnosisHistoryList';
 import { useAuth } from '../../context/AuthContext';
 import { useDiagnosis } from '../../context/DiagnosisContext';
@@ -167,6 +167,7 @@ export function CropScannerScreen({ navigation }: Props) {
   return (
     <ScreenWrapper padded={false}>
       <ScreenHeader
+        banner
         title="Crop Scanner"
         subtitle="Tag scans to a field — add plots in Profile first"
       />
@@ -238,7 +239,7 @@ export function CropScannerScreen({ navigation }: Props) {
 
       {/* Diagnosis history */}
       <View style={styles.historySection}>
-        <Text style={styles.sectionTitle}>Recent diagnoses</Text>
+        <SectionLabel style={styles.historyLabel}>Recent diagnoses</SectionLabel>
         <DiagnosisHistoryList items={history} onPressItem={openHistoryItem} />
       </View>
     </ScreenWrapper>
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
   actions: { paddingHorizontal: spacing.md, marginTop: spacing.md, gap: spacing.sm },
   fieldPicker: { paddingHorizontal: spacing.md, marginTop: spacing.sm },
   historySection: { paddingHorizontal: spacing.md, marginTop: spacing.lg },
-  sectionTitle: { ...typography.h3, marginBottom: spacing.md },
+  historyLabel: { marginTop: 0 },
   divider: { height: spacing.md },
   webPlaceholder: {
     flex: 1,

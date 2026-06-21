@@ -1,3 +1,4 @@
+import type { VerdoraLocation } from '../../data/namibiaLocations';
 import type {
   ChatMessage,
   DiagnosisResult,
@@ -29,7 +30,7 @@ export interface RegisterRequest {
   name?: string;
   email: string;
   password: string;
-  location: string;
+  location: VerdoraLocation;
   farmSize?: string;
   farmerType?: 'small-scale' | 'commercial';
   dataConsent: boolean;

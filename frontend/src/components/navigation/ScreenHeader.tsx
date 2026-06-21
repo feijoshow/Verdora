@@ -1,36 +1,49 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors, spacing, typography } from '../../constants/theme';
+import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 
 interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
   showBack?: boolean;
   rightAction?: { label: string; onPress: () => void };
+  /** Soft green band behind title — good for tab root screens */
+  banner?: boolean;
 }
 
-export function ScreenHeader({ title, subtitle, showBack, rightAction }: ScreenHeaderProps) {
+export function ScreenHeader({
+  title,
+  subtitle,
+  showBack,
+  rightAction,
+  banner = false,
+}: ScreenHeaderProps) {
   const navigation = useNavigation();
+  const showNavRow = Boolean(showBack && navigation.canGoBack()) || Boolean(rightAction);
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.row}>
-        {showBack && navigation.canGoBack() ? (
-          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
-            <Text style={styles.backText}>← Back</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.backPlaceholder} />
-        )}
-        {rightAction ? (
-          <Pressable onPress={rightAction.onPress} hitSlop={8}>
-            <Text style={styles.rightAction}>{rightAction.label}</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.backPlaceholder} />
-        )}
-      </View>
+    <View style={[styles.wrap, banner && styles.wrapBanner]}>
+      {showNavRow ? (
+        <View style={styles.row}>
+          {showBack && navigation.canGoBack() ? (
+            <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
+              <Ionicons name="chevron-back" size={20} color={colors.primary} />
+              <Text style={styles.backText}>Back</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.backPlaceholder} />
+          )}
+          {rightAction ? (
+            <Pressable onPress={rightAction.onPress} hitSlop={8}>
+              <Text style={styles.rightAction}>{rightAction.label}</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.backPlaceholder} />
+          )}
+        </View>
+      ) : null}
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
@@ -38,17 +51,32 @@ export function ScreenHeader({ title, subtitle, showBack, rightAction }: ScreenH
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: spacing.md, marginTop: spacing.sm },
+  wrap: { marginBottom: spacing.md, marginTop: spacing.xs },
+  wrapBanner: {
+    backgroundColor: colors.primarySoft,
+    marginHorizontal: -spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    marginBottom: spacing.lg,
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
-  backBtn: { minWidth: 72 },
+  backBtn: {
+    minWidth: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
   backPlaceholder: { minWidth: 72 },
   backText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
   rightAction: { ...typography.bodySmall, color: colors.secondaryDark, fontWeight: '600' },
-  title: { ...typography.h2, color: colors.primary },
-  subtitle: { ...typography.bodySmall, marginTop: spacing.xs },
+  title: { ...typography.h2, color: colors.primaryDark, letterSpacing: -0.3 },
+  subtitle: { ...typography.bodySmall, marginTop: spacing.xs, lineHeight: 20 },
 });

@@ -1,4 +1,5 @@
 import type { User } from '../../types';
+import { getWeatherGeocodeQuery } from '../../utils/locationHelpers';
 import type { FarmerSummary } from '../data/farmerDataService';
 import { findPlantingGuide } from '../calendar/plantingGuideService';
 import { isNamibiaDrySeason } from './farmerContext';
@@ -6,7 +7,7 @@ import { isNamibiaDrySeason } from './farmerContext';
 /** Contextual quick prompts shown before the first chat message. */
 export function buildQuickPrompts(user: User, summary: FarmerSummary): string[] {
   const { crops, recentScans } = summary;
-  const location = user.location?.split(',')[0]?.trim() ?? 'my area';
+  const location = getWeatherGeocodeQuery(user) ?? 'my area';
 
   if (crops.length === 0) {
     return [

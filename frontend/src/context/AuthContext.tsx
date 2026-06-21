@@ -10,6 +10,7 @@ import {
 import { trackUserProfile, updateFarmerProfile } from '../services/analytics/dataCollectionService';
 import { toApiError } from '../services/api/errors';
 import type { FarmerType, User } from '../types';
+import type { VerdoraLocation } from '../data/namibiaLocations';
 import type { RegisterRequest } from '../services/api/types';
 
 const AUTH_STORAGE_KEY = '@verdora_auth_user';
@@ -18,7 +19,7 @@ export interface RegisterProfileInput {
   name?: string;
   email: string;
   password: string;
-  location: string;
+  location: VerdoraLocation;
   farmSize?: string;
   farmerType?: FarmerType;
   dataConsent: boolean;

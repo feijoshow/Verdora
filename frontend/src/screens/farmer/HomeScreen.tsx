@@ -1,23 +1,33 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { OutbreakNearYouBanner } from '../../components/intelligence/OutbreakNearYouBanner';
 import { NavCard } from '../../components/navigation/NavCard';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
-import { Card, EmptyState, InlineLoader, ScreenWrapper } from '../../components/ui';
+import { Card, EmptyState, InlineLoader, ScreenWrapper, SectionLabel } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { getFarmerSummary, type FarmerSummary } from '../../services/data/farmerDataService';
 import { getFarmerNearbyAlerts } from '../../services/intelligence/intelligenceService';
 import type { DiseaseAlert } from '../../types/analytics';
-import { colors, spacing, typography } from '../../constants/theme';
+import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 import type { FarmerStackParamList, FarmerTabParamList } from '../../navigation/types';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<FarmerTabParamList, 'Home'>,
   NativeStackScreenProps<FarmerStackParamList>
 >;
+
+function StatPill({ icon, label }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string }) {
+  return (
+    <View style={styles.statPill}>
+      <Ionicons name={icon} size={14} color={colors.primary} />
+      <Text style={styles.statPillText}>{label}</Text>
+    </View>
+  );
+}
 
 export function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
@@ -42,16 +52,20 @@ export function HomeScreen({ navigation }: Props) {
   }, [load]);
 
   const parentNav = navigation.getParent();
+  const firstName = user?.name?.split(' ')[0] ?? 'Farmer';
 
   return (
     <ScreenWrapper>
       <ScreenHeader
-        title={`Hello, ${user?.name?.split(' ')[0] ?? 'Farmer'}`}
-        subtitle={user?.location ? user.location : 'Set your location in Profile'}
+        banner
+        title={`Hello, ${firstName}`}
+        subtitle={user?.location ? user.location : 'Set your location in Profile for local advice'}
       />
 
       <Pressable onPress={() => navigation.navigate('Profile')} style={styles.profileLink}>
-        <Text style={styles.profileLinkText}>Edit profile & privacy settings</Text>
+        <Ionicons name="person-circle-outline" size={16} color={colors.primary} />
+        <Text style={styles.profileLinkText}>Profile & privacy</Text>
+        <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
       </Pressable>
 
       <OutbreakNearYouBanner
@@ -67,13 +81,20 @@ export function HomeScreen({ navigation }: Props) {
       {loading ? (
         <InlineLoader />
       ) : summary ? (
-        <Card variant="highlight" style={styles.statsCard}>
-          <Text style={styles.statsTitle}>Your farm</Text>
+        <Card variant="elevated" style={styles.statsCard}>
+          <View style={styles.statsHeader}>
+            <Ionicons name="leaf" size={18} color={colors.primary} />
+            <Text style={styles.statsTitle}>Your farm</Text>
+          </View>
           {summary.crops.length > 0 ? (
             <Text style={styles.crops}>Growing: {summary.crops.join(', ')}</Text>
           ) : (
             <Text style={styles.cropsMuted}>Add crops in Calendar to unlock scan & weather insights</Text>
           )}
+          <View style={styles.statsRow}>
+            <StatPill icon="camera-outline" label={`${summary.scanCount} scans`} />
+            <StatPill icon="calendar-outline" label={`${summary.calendarEventCount} events`} />
+          </View>
         </Card>
       ) : (
         <EmptyState
@@ -83,47 +104,47 @@ export function HomeScreen({ navigation }: Props) {
         />
       )}
 
-      <Text style={styles.section}>Navigate</Text>
+      <SectionLabel>Quick access</SectionLabel>
       <NavCard
-        emoji="📷"
+        icon="camera"
         title="Crop Scanner"
-        description="Scan or upload — diagnosis uses your registered crops"
+        description="Scan or upload — AI identifies crop & disease"
         onPress={() => navigation.navigate('Scanner')}
       />
       <NavCard
-        emoji="📅"
+        icon="calendar"
         title="Plantation Calendar"
-        description="Your planting & harvest schedule"
+        description="Planting & harvest schedule"
         onPress={() => navigation.navigate('Calendar')}
       />
       <NavCard
-        emoji="📚"
+        icon="library"
         title="Crop Library"
-        description="Browse crops, seasons, and planting guidance"
+        description="Seasons, spacing, and planting guidance"
         onPress={() => parentNav?.navigate('CropLibrary')}
       />
       <NavCard
-        emoji="🌦️"
+        icon="partly-sunny"
         title="Weather"
         description={`Forecasts for ${user?.location?.split(',')[0] ?? 'your area'}`}
         onPress={() => navigation.navigate('Weather')}
       />
       <NavCard
-        emoji="🤖"
+        icon="chatbubbles"
         title="Farming Assistant"
-        description="Ask questions — answers use your real farm data"
+        description="Ask questions — answers use your farm data"
         onPress={() => navigation.navigate('Chat')}
       />
 
       {summary && summary.recentScans.length > 0 ? (
         <>
-          <Text style={styles.section}>Latest scan</Text>
+          <SectionLabel>Latest scan</SectionLabel>
           <Pressable
             onPress={() =>
               parentNav?.navigate('DiagnosisResults', { result: summary.recentScans[0] })
             }
           >
-            <Card>
+            <Card variant="highlight">
               <Text style={styles.scanCrop}>{summary.recentScans[0].cropName}</Text>
               <Text style={styles.scanMeta}>
                 {summary.recentScans[0].disease ?? 'Healthy'} · Tap for details
@@ -137,14 +158,30 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  loader: { marginVertical: spacing.lg },
-  profileLink: { marginBottom: spacing.md },
+  profileLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+    alignSelf: 'flex-start',
+  },
   profileLinkText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
-  statsCard: { marginBottom: spacing.md },
-  statsTitle: { ...typography.bodySmall, fontWeight: '700', marginBottom: spacing.xs },
-  crops: { ...typography.bodySmall },
-  cropsMuted: { ...typography.caption, fontStyle: 'italic' },
-  section: { ...typography.h3, marginTop: spacing.md, marginBottom: spacing.sm },
+  statsCard: { marginBottom: spacing.sm },
+  statsHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  statsTitle: { ...typography.h3, fontSize: 16, color: colors.primaryDark },
+  crops: { ...typography.bodySmall, lineHeight: 22 },
+  cropsMuted: { ...typography.caption, fontStyle: 'italic', lineHeight: 18 },
+  statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, flexWrap: 'wrap' },
+  statPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  statPillText: { ...typography.caption, color: colors.primaryDark, fontWeight: '600' },
   scanCrop: { ...typography.h3, fontSize: 16, color: colors.primary },
   scanMeta: { ...typography.caption, marginTop: 4 },
 });

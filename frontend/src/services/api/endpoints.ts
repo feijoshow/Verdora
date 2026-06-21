@@ -46,8 +46,10 @@ export const API_ENDPOINTS = {
   },
 } as const;
 
-/** Z.ai GLM-4.6V-Flash — crop scanner vision model (free tier) */
+/** Z.ai GLM-4.6V-Flash — crop scanner vision model */
 export const ZAI_VISION_MODEL = 'glm-4.6v-flash';
+/** Z.ai GLM-4.7-Flash — farming chat assistant (free tier) */
+export const ZAI_CHAT_MODEL = 'glm-4.7-flash';
 export const ZAI_CHAT_COMPLETIONS_URL = 'https://api.z.ai/api/paas/v4/chat/completions';
 
 /** @deprecated Legacy Gemini — kept for reference; scanner uses Z.ai */

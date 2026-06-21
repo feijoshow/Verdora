@@ -11,7 +11,13 @@ export interface DbUser {
   email: string;
   name: string;
   role: DbUserRole;
-  location: string | null;
+  location_legacy: string | null;
+  region_id: string | null;
+  region_name: string | null;
+  town_id: string | null;
+  town_name: string | null;
+  constituency: string | null;
+  is_custom_town: boolean;
   latitude: number | null;
   longitude: number | null;
   farm_size: string | null;

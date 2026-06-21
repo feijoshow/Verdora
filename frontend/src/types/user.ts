@@ -8,9 +8,19 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  /** Critical for regional insights & segmentation */
+  /** Display string — derived from structured town/region on write */
   location?: string;
+  /** Pre-migration free-text location (Supabase location_legacy) */
+  locationLegacy?: string;
+  regionId?: string;
+  regionName?: string;
+  townId?: string;
+  townName?: string;
+  constituency?: string;
+  isCustomTown?: boolean;
+  /** @deprecated use regionName / townName */
   region?: string;
+  /** @deprecated use townName */
   village?: string;
   latitude?: number;
   longitude?: number;

@@ -1,4 +1,5 @@
 import type { User } from '../../types';
+import { getChatLocationLabel } from '../../utils/locationHelpers';
 import { getUserCropScans, getUserFarmingRecords } from '../analytics/dataCollectionService';
 
 const MONTH_NAMES = [
@@ -35,8 +36,7 @@ export async function buildFarmerAiContext(user: User): Promise<FarmerAiContext>
     ...new Set([...(user.cropsPlanted ?? []), ...farming.map((r) => r.cropName)]),
   ];
 
-  const locationParts = [user.village, user.region, user.location].filter(Boolean);
-  const locationLabel = locationParts[0] ?? user.location ?? 'Namibia (location not set in Profile)';
+  const locationLabel = getChatLocationLabel(user);
 
   const scanSummary =
     scans.length === 0

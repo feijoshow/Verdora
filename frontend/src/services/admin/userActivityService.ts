@@ -18,7 +18,7 @@ import { isSupabaseConfigured } from '../supabase/client';
 import { fetchChatLogsByUser } from '../supabase/repositories/chatRepository';
 import { fetchCropsByUser } from '../supabase/repositories/cropsRepository';
 import { fetchScansByUser } from '../supabase/repositories/scansRepository';
-import { fetchAllUsers } from '../supabase/repositories/usersRepository';
+import { dbUserToUser, fetchAllUsers } from '../supabase/repositories/usersRepository';
 import { fetchWeatherLogsByUser } from '../supabase/repositories/weatherRepository';
 
 function dbScanToRecord(scan: DbScan, userName: string, location: string): CropScanRecord {
@@ -79,23 +79,7 @@ function dbChatToRecord(log: DbChatLog, location: string): ChatQuestionRecord {
 }
 
 function dbUserToProfile(user: DbUser): UserProfileRecord {
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    location: user.location ?? undefined,
-    latitude: user.latitude ?? undefined,
-    longitude: user.longitude ?? undefined,
-    farmSize: user.farm_size ?? undefined,
-    farmerType: user.farmer_type ?? undefined,
-    cropsPlanted: user.crop_preferences ?? [],
-    cropPreferences: user.crop_preferences ?? [],
-    soilType: user.soil_type ?? undefined,
-    farmingMethods: user.farming_methods ?? [],
-    dataConsent: user.data_consent,
-    createdAt: user.created_at,
-  };
+  return dbUserToUser(user) as UserProfileRecord;
 }
 
 function mergeById<T extends { id: string }>(primary: T[], secondary: T[]): T[] {

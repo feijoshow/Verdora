@@ -9,6 +9,7 @@ import {
 import { API_ENDPOINTS } from './endpoints';
 import { apiPost, apiClient } from './client';
 import { tokenStorage } from './tokenStorage';
+import { applyVerdoraLocation, isValidVerdoraLocation } from '../../utils/locationHelpers';
 import type { LoginRequest, LoginResponse, RegisterRequest } from './types';
 
 function assertAuthConfigured(): void {
@@ -20,12 +21,11 @@ function assertAuthConfigured(): void {
 }
 
 function buildUserFromRegister(payload: RegisterRequest, id: string): User {
-  return {
+  const base: User = {
     id,
     email: payload.email.trim().toLowerCase(),
     name: payload.name?.trim() || 'Farmer',
     role: 'farmer',
-    location: payload.location.trim(),
     farmSize: payload.farmSize,
     farmerType: payload.farmerType,
     cropsPlanted: [],
@@ -33,6 +33,7 @@ function buildUserFromRegister(payload: RegisterRequest, id: string): User {
     dataConsentAt: payload.dataConsent ? new Date().toISOString() : undefined,
     createdAt: new Date().toISOString(),
   };
+  return { ...base, ...applyVerdoraLocation(payload.location) };
 }
 
 async function supabaseLogin({ email, password }: LoginRequest): Promise<LoginResponse> {
@@ -81,7 +82,7 @@ async function supabaseRegister(payload: RegisterRequest): Promise<LoginResponse
   if (payload.password.length < 6) {
     throw new Error('Password must be at least 6 characters');
   }
-  if (!payload.location?.trim()) {
+  if (!isValidVerdoraLocation(payload.location)) {
     throw new Error('Location is required');
   }
 

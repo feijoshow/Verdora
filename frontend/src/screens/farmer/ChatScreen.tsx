@@ -148,9 +148,11 @@ export function ChatScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.body}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Farming Assistant</Text>
-          <Text style={styles.subtitle}>Answers based on your real farm data</Text>
+        <View style={styles.headerWrap}>
+          <ScreenHeader
+            title="Farming Assistant"
+            subtitle="Powered by your farm profile & crop data"
+          />
         </View>
 
         <FlatList
@@ -227,16 +229,13 @@ export function ChatScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   body: { flex: 1 },
-  header: {
+  headerWrap: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  title: { ...typography.h2, color: colors.primary },
-  subtitle: { ...typography.caption },
-  list: { flex: 1 },
+  list: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.md, paddingBottom: spacing.sm, flexGrow: 1 },
   typing: {
     flexDirection: 'row',
@@ -270,12 +269,12 @@ const styles = StyleSheet.create({
   promptChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
+    borderColor: colors.primaryLight,
+    backgroundColor: colors.primarySoft,
   },
-  promptText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+  promptText: { ...typography.caption, color: colors.primaryDark, fontWeight: '600' },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

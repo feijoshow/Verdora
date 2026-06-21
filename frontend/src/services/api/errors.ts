@@ -23,6 +23,7 @@ export function toApiError(error: unknown): ApiError {
 
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosErr = error as {
+      code?: string;
       response?: {
         status?: number;
         data?: {
@@ -43,7 +44,7 @@ export function toApiError(error: unknown): ApiError {
       'Request failed';
     return new ApiError(message, {
       status: axiosErr.response?.status ?? data?.error?.code,
-      code: data?.code ?? data?.error?.status ?? data?.error?.message,
+      code: axiosErr.code ?? data?.code ?? data?.error?.status ?? data?.error?.message,
     });
   }
 
