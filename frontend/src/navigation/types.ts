@@ -2,8 +2,10 @@
 import type { DiagnosisResult } from '../types';
 
 export type AuthStackParamList = {
-  Login: undefined;
+  Login: { resetSuccess?: boolean } | undefined;
   Register: undefined;
+  ForgotPassword: undefined;
+  ResetPassword: { email: string };
 };
 
 export type FarmerTabParamList = {

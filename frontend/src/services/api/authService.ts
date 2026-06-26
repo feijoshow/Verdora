@@ -138,6 +138,59 @@ export async function register(payload: RegisterRequest): Promise<LoginResponse>
   return supabaseRegister(payload);
 }
 
+/** Sends a 6-digit recovery code to the user's email (Supabase Auth). */
+export async function requestPasswordResetCode(email: string): Promise<void> {
+  assertAuthConfigured();
+
+  if (hasRestApi && !isSupabaseConfigured()) {
+    throw new Error('Password reset requires Supabase authentication.');
+  }
+
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase is not configured');
+
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) throw new Error('Email is required');
+
+  const { error } = await sb.auth.resetPasswordForEmail(trimmed);
+  if (error) throw new Error(error.message);
+}
+
+/** Verifies the email code and sets a new password. */
+export async function completePasswordReset(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  assertAuthConfigured();
+
+  if (hasRestApi && !isSupabaseConfigured()) {
+    throw new Error('Password reset requires Supabase authentication.');
+  }
+
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase is not configured');
+
+  const trimmedEmail = email.trim().toLowerCase();
+  const trimmedCode = code.trim();
+  if (!trimmedEmail) throw new Error('Email is required');
+  if (!trimmedCode) throw new Error('Reset code is required');
+  if (newPassword.length < 6) throw new Error('Password must be at least 6 characters');
+
+  const { error: verifyError } = await sb.auth.verifyOtp({
+    email: trimmedEmail,
+    token: trimmedCode,
+    type: 'recovery',
+  });
+  if (verifyError) throw new Error(verifyError.message);
+
+  const { error: updateError } = await sb.auth.updateUser({ password: newPassword });
+  if (updateError) throw new Error(updateError.message);
+
+  await sb.auth.signOut();
+  await tokenStorage.clearTokens();
+}
+
 export async function logout(): Promise<void> {
   if (hasRestApi && !isSupabaseConfigured()) {
     try {

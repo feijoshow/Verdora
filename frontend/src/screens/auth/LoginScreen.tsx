@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, Card, Input, ScreenWrapper } from '../../components/ui';
@@ -12,15 +12,24 @@ const LOGO = require('../../../assets/verdora-logo.png');
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-export function LoginScreen({ navigation }: Props) {
+export function LoginScreen({ navigation, route }: Props) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (route.params?.resetSuccess) {
+      setSuccess('Password updated. Sign in with your new password.');
+      navigation.setParams({ resetSuccess: undefined });
+    }
+  }, [navigation, route.params?.resetSuccess]);
 
   const handleLogin = async () => {
     setError('');
+    setSuccess('');
     setLoading(true);
     const result = await login(email, password);
     setLoading(false);
@@ -49,6 +58,10 @@ export function LoginScreen({ navigation }: Props) {
           onChangeText={setPassword}
           secureTextEntry
         />
+        <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotWrap}>
+          <Text style={styles.forgotText}>Forgot password?</Text>
+        </Pressable>
+        {success ? <Text style={styles.success}>{success}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {env.demoMode ? (
@@ -92,6 +105,9 @@ const styles = StyleSheet.create({
   brand: { fontSize: 28, fontWeight: '700', color: colors.primaryDark, letterSpacing: -0.5 },
   subtitle: { ...typography.bodySmall, marginTop: spacing.xs, textAlign: 'center' },
   formCard: { marginBottom: spacing.md, width: '100%', maxWidth: 440, alignSelf: 'center' },
+  forgotWrap: { alignSelf: 'flex-end', marginTop: -spacing.sm, marginBottom: spacing.md },
+  forgotText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
+  success: { ...typography.bodySmall, color: colors.success, marginBottom: spacing.md },
   error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
   demoWrap: { marginBottom: spacing.md, gap: spacing.sm },
   demoLabel: { ...typography.sectionLabel, marginTop: 0 },
