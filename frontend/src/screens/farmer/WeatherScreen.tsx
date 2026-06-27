@@ -18,7 +18,12 @@ import { toApiError } from '../../services/api/errors';
 import type { WeatherResponse } from '../../services/api/types';
 import type { FarmField } from '../../types/field';
 import { getWeatherGeocodeQuery } from '../../utils/locationHelpers';
+import { splitPlantingRecommendations } from '../../services/ai/namibiaWeather';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+
+function currentMonth(): string {
+  return new Date().toLocaleString(undefined, { month: 'long' });
+}
 
 function weatherEmoji(icon: string): string {
   if (icon.includes('rain')) return '🌧️';
@@ -139,13 +144,49 @@ export function WeatherScreen() {
           </Card>
 
           <Text style={styles.sectionTitle}>
-            {selectedField ? `Planting times — ${selectedField.name}` : 'Best planting times'}
+            {selectedField ? `Planting guide — ${selectedField.name}` : 'Planting guide'}
           </Text>
-          {weather.plantingWindows?.length ? (
-            weather.plantingWindows.map((item) => (
-              <PlantingRecommendationCard key={item.cropName} item={item} />
-            ))
-          ) : (
+          {weather.plantingWindows?.length ? (() => {
+            const { plantNow, yourCropsWait } = splitPlantingRecommendations(
+              weather.plantingWindows,
+            );
+            return (
+              <>
+                {plantNow.length > 0 ? (
+                  <>
+                    <Text style={styles.sectionTitle}>Good to plant now</Text>
+                    <Text style={styles.sectionHint}>
+                      Based on Namibia planting guides and current {currentMonth()} conditions
+                    </Text>
+                    {plantNow.map((item) => (
+                      <PlantingRecommendationCard key={item.cropName} item={item} />
+                    ))}
+                  </>
+                ) : null}
+
+                {yourCropsWait.length > 0 ? (
+                  <>
+                    <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>
+                      Your crops — wait
+                    </Text>
+                    <Text style={styles.sectionHint}>
+                      These are on your calendar but not in season this month
+                    </Text>
+                    {yourCropsWait.map((item) => (
+                      <PlantingRecommendationCard key={`wait-${item.cropName}`} item={item} />
+                    ))}
+                  </>
+                ) : null}
+
+                {plantNow.length === 0 && yourCropsWait.length === 0 ? (
+                  <EmptyState
+                    message="No planting guidance for this month — check the Crop Library."
+                    variant="muted"
+                  />
+                ) : null}
+              </>
+            );
+          })() : (
             <EmptyState
               message={
                 selectedField
@@ -185,5 +226,7 @@ const styles = StyleSheet.create({
   },
   tipLabel: { ...typography.caption, fontWeight: '700', marginBottom: spacing.xs },
   tipText: { ...typography.bodySmall, lineHeight: 20 },
-  sectionTitle: { ...typography.h3, marginBottom: spacing.md },
+  sectionTitle: { ...typography.h3, marginBottom: spacing.xs },
+  sectionTitleSpaced: { marginTop: spacing.lg },
+  sectionHint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
 });

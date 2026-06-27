@@ -77,6 +77,8 @@ export interface PlantingRecommendation {
   cropName: string;
   status: 'ideal' | 'caution' | 'avoid';
   reason: string;
+  /** True when this crop is on the farmer's calendar or profile */
+  isUserCrop?: boolean;
 }
 
 // ——— Chat ———

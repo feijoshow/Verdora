@@ -144,14 +144,87 @@ export function formatDisplayDate(iso: string): string {
   }
 }
 
-/** Check if current month falls in best planting window (rough match) */
-export function isGoodTimeToPlant(guide: CropPlantingGuide, date = new Date()): boolean {
-  if (guide.bestPlantingMonths.toLowerCase().includes('year-round')) return true;
+/** All built-in + dataset planting guides (deduplicated). */
+export function getAllPlantingGuides(extraGuides: CropPlantingGuide[] = []): CropPlantingGuide[] {
+  return mergeGuides(extraGuides);
+}
 
-  const month = date.toLocaleString('en-US', { month: 'long' });
-  const short = date.toLocaleString('en-US', { month: 'short' });
-  const text = guide.bestPlantingMonths.toLowerCase();
-  return text.includes(month.toLowerCase()) || text.includes(short.toLowerCase());
+const MONTH_NAMES = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+];
+
+function monthNameToIndex(name: string): number {
+  const lower = name.trim().toLowerCase();
+  const idx = MONTH_NAMES.findIndex((m) => lower === m || lower.startsWith(m.slice(0, 3)));
+  return idx >= 0 ? idx + 1 : 0;
+}
+
+/** Parse bestPlantingMonths into 1-based month indices (Jan=1). */
+export function monthsInPlantingWindow(bestPlantingMonths: string): number[] {
+  const text = bestPlantingMonths.replace(/\([^)]*\)/g, '').trim().toLowerCase();
+  if (text.includes('year-round') || text.includes('year round')) {
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  }
+
+  const result = new Set<number>();
+  const segments = text.split(/\s*&\s*|\s+and\s+/);
+
+  for (const segment of segments) {
+    const rangeMatch = segment.match(
+      /(january|february|march|april|may|june|july|august|september|october|november|december)\s*[–\-—to]+\s*(january|february|march|april|may|june|july|august|september|october|november|december)/i,
+    );
+    if (rangeMatch) {
+      const start = monthNameToIndex(rangeMatch[1]);
+      const end = monthNameToIndex(rangeMatch[2]);
+      if (start && end) {
+        if (start <= end) {
+          for (let m = start; m <= end; m += 1) result.add(m);
+        } else {
+          for (let m = start; m <= 12; m += 1) result.add(m);
+          for (let m = 1; m <= end; m += 1) result.add(m);
+        }
+      }
+      continue;
+    }
+
+    for (let i = 0; i < MONTH_NAMES.length; i += 1) {
+      if (segment.includes(MONTH_NAMES[i])) result.add(i + 1);
+    }
+  }
+
+  return [...result].sort((a, b) => a - b);
+}
+
+export function plantingStatusForMonth(
+  bestPlantingMonths: string,
+  monthIndex: number,
+): 'ideal' | 'caution' | 'avoid' {
+  const allowed = monthsInPlantingWindow(bestPlantingMonths);
+  if (allowed.length === 0) return 'caution';
+  if (allowed.includes(monthIndex)) return 'ideal';
+
+  for (const m of allowed) {
+    const direct = Math.abs(m - monthIndex);
+    const wrap = 12 - direct;
+    if (Math.min(direct, wrap) === 1) return 'caution';
+  }
+  return 'avoid';
+}
+
+/** Check if current month falls in best planting window */
+export function isGoodTimeToPlant(guide: CropPlantingGuide, date = new Date()): boolean {
+  return plantingStatusForMonth(guide.bestPlantingMonths, date.getMonth() + 1) === 'ideal';
 }
 
 export function buildPlantingSummary(guide: CropPlantingGuide, plantDate?: string): {

@@ -6,10 +6,16 @@ import {
   buildSeasonalCropRecommendations,
   buildWeatherQueryVariants,
   drySeasonFarmingTip,
+  splitPlantingRecommendations,
 } from '../ai/namibiaWeather';
+import { formatCropDisplayName } from '../calendar/plantingGuideService';
 import { API_ENDPOINTS, EXTERNAL_APIS } from './endpoints';
 import { apiGet, externalClient } from './client';
 import type { PlantingRecommendation, WeatherQueryParams, WeatherResponse } from './types';
+
+function normalizeCropNames(names: string[]): string[] {
+  return [...new Set(names.map((name) => formatCropDisplayName(name)).filter(Boolean))];
+}
 
 function mapOpenWeatherResponse(data: Record<string, unknown>, fallbackLocation?: string): WeatherData {
   const main = data.main as { temp?: number; humidity?: number } | undefined;
@@ -64,7 +70,9 @@ async function weatherFromLastLog(user: User): Promise<WeatherResponse | null> {
   if (!log) return null;
 
   const farming = await getUserFarmingRecords(user.id);
-  const crops = [...new Set(farming.map((r) => r.cropName))];
+  const crops = normalizeCropNames([
+    ...new Set(farming.map((r) => r.cropName)),
+  ]);
 
   return {
     location: log.location,
@@ -95,12 +103,10 @@ export async function getWeather(user: User, params?: WeatherQueryParams): Promi
     ? farming.filter((r) => r.fieldId === fieldId)
     : farming;
 
-  const crops = [
-    ...new Set([
-      ...(fieldId ? [] : user.cropsPlanted ?? []),
-      ...fieldRecords.map((r) => r.cropName),
-    ]),
-  ];
+  const crops = normalizeCropNames([
+    ...(fieldId ? [] : user.cropsPlanted ?? []),
+    ...fieldRecords.map((r) => r.cropName),
+  ]);
 
   if (env.openWeatherApiKey && (city || (params?.lat != null && params?.lon != null))) {
     try {
