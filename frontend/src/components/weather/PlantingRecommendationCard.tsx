@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { PlantingRecommendation } from '../../services/api/types';
 import { Card } from '../ui/Card';
+import { MarkdownText } from '../ui/MarkdownText';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 
 const STATUS_CONFIG = {
@@ -26,7 +27,7 @@ export function PlantingRecommendationCard({ item }: PlantingRecommendationCardP
         </View>
         <Text style={styles.crop}>{item.cropName}</Text>
       </View>
-      <Text style={styles.reason}>{item.reason}</Text>
+      <MarkdownText style={styles.reason}>{item.reason}</MarkdownText>
     </Card>
   );
 }
