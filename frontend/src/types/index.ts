@@ -2,6 +2,7 @@ export type { UserRole, FarmerType, User } from './user';
 export type { FarmField } from './field';
 
 export * from './analytics';
+export * from './maintenance';
 
 /** Crop diagnosis result from AI scanner */
 export interface DiagnosisResult {

@@ -6,12 +6,12 @@ import { DATA_CONSENT_NOTICE } from '../../constants/privacy';
 import { colors, spacing, typography } from '../../constants/theme';
 
 /** Opt-in / opt-out toggle for analytics data collection */
-export function PrivacySettingsCard() {
+export function PrivacySettingsCard({ embedded = false }: { embedded?: boolean }) {
   const { hasConsent, setConsent, isCloudSyncEnabled, canCollectData } = usePrivacy();
 
-  return (
-    <Card variant="highlight" style={styles.card}>
-      <Text style={styles.title}>Privacy & data collection</Text>
+  const content = (
+    <>
+      {!embedded ? <Text style={styles.title}>Privacy & data collection</Text> : null}
       <Text style={styles.body}>{DATA_CONSENT_NOTICE}</Text>
 
       <View style={styles.statusRow}>
@@ -41,6 +41,14 @@ export function PrivacySettingsCard() {
           </Text>
         )}
       </View>
+    </>
+  );
+
+  if (embedded) return <View>{content}</View>;
+
+  return (
+    <Card variant="highlight" style={styles.card}>
+      {content}
     </Card>
   );
 }

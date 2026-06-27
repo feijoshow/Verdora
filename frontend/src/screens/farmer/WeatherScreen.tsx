@@ -17,7 +17,7 @@ import { getWeather } from '../../services/api/weatherService';
 import { toApiError } from '../../services/api/errors';
 import type { WeatherResponse } from '../../services/api/types';
 import type { FarmField } from '../../types/field';
-import { getUserLocationDisplay, getWeatherGeocodeQuery } from '../../utils/locationHelpers';
+import { getWeatherGeocodeQuery } from '../../utils/locationHelpers';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 
 function weatherEmoji(icon: string): string {
@@ -38,7 +38,6 @@ export function WeatherScreen() {
   const [selectedField, setSelectedField] = useState<FarmField | null>(null);
 
   const city = user ? getWeatherGeocodeQuery(user) : undefined;
-  const displayLocation = user ? getUserLocationDisplay(user) : undefined;
 
   const loadWeather = useCallback(async (isRefresh = false) => {
     if (!user) return;
@@ -78,14 +77,6 @@ export function WeatherScreen() {
     loadWeather();
   }, [loadWeather]);
 
-  const subtitle = selectedField
-    ? selectedField.latitude != null
-      ? `Micro-forecast for ${selectedField.name}`
-      : `Forecast for ${selectedField.name} (farm location)`
-    : displayLocation
-      ? `Live data for ${displayLocation}`
-      : 'Set your location in Profile for local forecasts';
-
   return (
     <ScreenWrapper
       refreshControl={
@@ -97,7 +88,7 @@ export function WeatherScreen() {
         />
       }
     >
-      <ScreenHeader banner title="Weather" subtitle={subtitle} />
+      <ScreenHeader banner title="Weather" />
 
       {user ? (
         <FieldPicker

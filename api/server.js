@@ -245,7 +245,391 @@ app.post('/api/v1/chat/message', async (req, res) => {
   }
 });
 
+const PLANTING_GUIDE_SYSTEM = `You are Verdora, an agricultural advisor for Namibian small-scale and commercial farmers.
+Return ONLY a single JSON object (no markdown) with these exact fields:
+{
+  "name": "Crop display name",
+  "aliases": ["optional", "aliases"],
+  "bestPlantingMonths": "Human-readable planting window for Namibia",
+  "harvestWindow": "Typical harvest window after planting",
+  "maturityDays": 90,
+  "maturityDaysRange": "e.g. 80-100 days",
+  "soilType": "Recommended soil type",
+  "soilPh": "e.g. pH 5.5 - 6.8",
+  "irrigation": "Irrigation method",
+  "waterNote": "Seasonal water needs in mm or practical guidance"
+}
+Use realistic Namibia seasonal advice (wet season Nov-Apr, dry May-Oct). maturityDays must be a number.`;
+
+function slugifyCropName(name) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function normalizePlantingGuidePayload(raw, cropName) {
+  const name = (raw?.name ?? cropName ?? 'Custom crop').trim();
+  const maturityDays = Number(raw?.maturityDays);
+  return {
+    id: `custom-${slugifyCropName(name) || 'crop'}`,
+    name,
+    aliases: Array.isArray(raw?.aliases)
+      ? raw.aliases.filter((a) => typeof a === 'string' && a.trim())
+      : [],
+    bestPlantingMonths:
+      raw?.bestPlantingMonths?.trim() ||
+      'February – March & August – September (adjust for local rainfall)',
+    harvestWindow:
+      raw?.harvestWindow?.trim() || `${Math.max(60, maturityDays || 90)} days after planting`,
+    maturityDays: Number.isFinite(maturityDays) && maturityDays > 0 ? Math.round(maturityDays) : 90,
+    maturityDaysRange: raw?.maturityDaysRange?.trim() || '60–120 days',
+    soilType: raw?.soilType?.trim() || 'Well-drained loam with organic matter',
+    soilPh: raw?.soilPh?.trim() || 'pH 5.5 – 7.0',
+    irrigation: raw?.irrigation?.trim() || 'Drip irrigation recommended in dry season',
+    waterNote:
+      raw?.waterNote?.trim() ||
+      'Match irrigation to growth stage — increase during flowering and fruiting',
+  };
+}
+
+async function requestPlantingGuideFromChat(cropName, location) {
+  const locationHint = location?.trim() ? ` Location: ${location.trim()}.` : ' Location: Namibia.';
+  const userPrompt = `Create a practical planting guide JSON for "${cropName}".${locationHint}`;
+  const messages = [
+    { role: 'system', content: PLANTING_GUIDE_SYSTEM },
+    { role: 'user', content: userPrompt },
+  ];
+  const errors = [];
+
+  function extractContent(data) {
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content === 'string') return content.trim();
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => (typeof part === 'string' ? part : part?.text ?? ''))
+        .join('')
+        .trim();
+    }
+    return '';
+  }
+
+  function parseGuideJson(rawText) {
+    if (!rawText) throw new Error('Guide model returned an empty response');
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Guide response was not valid JSON');
+    return JSON.parse(jsonMatch[0]);
+  }
+
+  async function callZai(useJsonFormat) {
+    const body = {
+      model: ZAI_CHAT_MODEL,
+      max_tokens: 900,
+      temperature: 0.35,
+      messages,
+    };
+    if (useJsonFormat) body.response_format = { type: 'json_object' };
+
+    const upstream = await fetch(ZAI_CHAT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${ZAI_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      const errMsg =
+        data?.error?.message ??
+        data?.message ??
+        (upstream.status === 429 ? 'Z.ai rate limit — wait and try again' : 'Z.ai guide request failed');
+      throw new Error(errMsg);
+    }
+
+    return parseGuideJson(extractContent(data));
+  }
+
+  async function callGrok() {
+    const upstream = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${XAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GROK_MODEL,
+        max_tokens: 900,
+        temperature: 0.35,
+        messages,
+      }),
+    });
+
+    const data = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      const errMsg =
+        (typeof data?.error === 'object' ? data.error?.message : null) ??
+        data?.message ??
+        'Grok guide request failed';
+      throw new Error(errMsg);
+    }
+
+    return parseGuideJson(extractContent(data));
+  }
+
+  if (ZAI_API_KEY) {
+    for (const useJson of [false, true]) {
+      try {
+        return await callZai(useJson);
+      } catch (err) {
+        errors.push(err instanceof Error ? err.message : 'Z.ai failed');
+      }
+    }
+  }
+
+  if (XAI_API_KEY) {
+    try {
+      return await callGrok();
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : 'Grok failed');
+    }
+  }
+
+  throw new Error(errors.join(' | ') || 'No AI key configured for planting guide generation');
+}
+
+/** POST /api/v1/calendar/planting-guide — AI planting guide for custom crops */
+app.post('/api/v1/calendar/planting-guide', async (req, res) => {
+  const { cropName, location } = req.body ?? {};
+  if (!cropName || typeof cropName !== 'string' || !cropName.trim()) {
+    return fail(res, 400, 'cropName is required');
+  }
+
+  if (!ZAI_API_KEY && !XAI_API_KEY) {
+    return fail(res, 503, 'No AI key configured for planting guide generation');
+  }
+
+  try {
+    const parsed = await requestPlantingGuideFromChat(cropName.trim(), location);
+    return ok(res, { guide: normalizePlantingGuidePayload(parsed, cropName.trim()) });
+  } catch (err) {
+    return fail(res, 500, err instanceof Error ? err.message : 'Planting guide generation failed');
+  }
+});
+
+const CARE_SCHEDULE_SYSTEM = `You are Verdora, an agricultural advisor for Namibian farmers.
+Return ONLY a JSON object (no markdown):
+{
+  "tasks": [
+    {
+      "type": "water" | "fertilize" | "weed" | "inspect" | "harvest",
+      "scheduledAt": "ISO-8601 datetime with timezone offset",
+      "title": "Short title e.g. Water mango",
+      "message": "One practical sentence for the farmer"
+    }
+  ]
+}
+Rules:
+- Plan from plant date through harvest using realistic crop growth stages for Namibia.
+- Use morning times (06:00–09:00 local) for field work when possible.
+- Include watering, weeding, inspection, fertilizing, and harvest readiness checks.
+- Limit to at most 20 tasks total.
+- scheduledAt must be in the future relative to now when demoMode is false.
+- When demoMode is true, schedule tasks within the next 30 minutes from plant date for testing.`;
+
+function normalizeCareScheduleTasks(rawTasks, cropName, demoMode) {
+  if (!Array.isArray(rawTasks)) return [];
+  const allowed = new Set(['water', 'fertilize', 'weed', 'pest', 'inspect', 'harvest', 'other']);
+  const now = Date.now();
+  const parsed = [];
+
+  for (const raw of rawTasks.slice(0, 24)) {
+    const type = String(raw?.type ?? 'inspect').toLowerCase();
+    if (!allowed.has(type)) continue;
+    const when = new Date(raw?.scheduledAt ?? '');
+    if (Number.isNaN(when.getTime()) || when.getTime() <= now - 60_000) continue;
+    parsed.push({
+      type,
+      scheduledAt: when.toISOString(),
+      title: raw?.title?.trim() || `${type} — ${cropName}`,
+      message: raw?.message?.trim() || `Care task for ${cropName}.`,
+    });
+  }
+
+  return parsed.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+}
+
+async function requestCareScheduleFromChat(payload) {
+  const {
+    cropName,
+    plantDate,
+    harvestDate,
+    maturityDays,
+    irrigation,
+    waterNote,
+    location,
+    demoMode,
+  } = payload;
+
+  const locationHint = location?.trim() ? ` Location: ${location.trim()}.` : ' Location: Namibia.';
+  const userPrompt = `Create a care schedule for "${cropName}" planted on ${plantDate}.${
+    harvestDate ? ` Expected harvest: ${harvestDate}.` : ''
+  } Maturity ~${maturityDays ?? 90} days. Irrigation: ${irrigation ?? 'drip'}. ${
+    waterNote ?? ''
+  }.${locationHint} demoMode=${Boolean(demoMode)}. Now: ${new Date().toISOString()}.`;
+
+  const messages = [
+    { role: 'system', content: CARE_SCHEDULE_SYSTEM },
+    { role: 'user', content: userPrompt },
+  ];
+  const errors = [];
+
+  function extractContent(data) {
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content === 'string') return content.trim();
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => (typeof part === 'string' ? part : part?.text ?? ''))
+        .join('')
+        .trim();
+    }
+    return '';
+  }
+
+  function parseTasksJson(rawText) {
+    if (!rawText) throw new Error('Care schedule model returned an empty response');
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Care schedule response was not valid JSON');
+    const parsed = JSON.parse(jsonMatch[0]);
+    return parsed?.tasks ?? parsed;
+  }
+
+  async function callZai(useJsonFormat) {
+    const body = {
+      model: ZAI_CHAT_MODEL,
+      max_tokens: 1200,
+      temperature: 0.35,
+      messages,
+    };
+    if (useJsonFormat) body.response_format = { type: 'json_object' };
+
+    const upstream = await fetch(ZAI_CHAT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${ZAI_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      throw new Error(data?.error?.message ?? data?.message ?? 'Z.ai care schedule failed');
+    }
+    return parseTasksJson(extractContent(data));
+  }
+
+  async function callGrok() {
+    const upstream = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${XAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GROK_MODEL,
+        max_tokens: 1200,
+        temperature: 0.35,
+        messages,
+      }),
+    });
+
+    const data = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      throw new Error(
+        (typeof data?.error === 'object' ? data.error?.message : null) ??
+          data?.message ??
+          'Grok care schedule failed',
+      );
+    }
+    return parseTasksJson(extractContent(data));
+  }
+
+  if (ZAI_API_KEY) {
+    for (const useJson of [false, true]) {
+      try {
+        return await callZai(useJson);
+      } catch (err) {
+        errors.push(err instanceof Error ? err.message : 'Z.ai failed');
+      }
+    }
+  }
+
+  if (XAI_API_KEY) {
+    try {
+      return await callGrok();
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : 'Grok failed');
+    }
+  }
+
+  throw new Error(errors.join(' | ') || 'No AI key configured for care schedule');
+}
+
+/** POST /api/v1/calendar/care-schedule — AI-timed water/weed/inspect plan */
+app.post('/api/v1/calendar/care-schedule', async (req, res) => {
+  const {
+    cropName,
+    plantDate,
+    harvestDate,
+    maturityDays,
+    irrigation,
+    waterNote,
+    location,
+    demoMode,
+  } = req.body ?? {};
+
+  if (!cropName || typeof cropName !== 'string' || !cropName.trim()) {
+    return fail(res, 400, 'cropName is required');
+  }
+  if (!plantDate || typeof plantDate !== 'string') {
+    return fail(res, 400, 'plantDate is required');
+  }
+
+  if (!ZAI_API_KEY && !XAI_API_KEY) {
+    return fail(res, 503, 'No AI key configured for care schedule');
+  }
+
+  try {
+    const rawTasks = await requestCareScheduleFromChat({
+      cropName: cropName.trim(),
+      plantDate,
+      harvestDate,
+      maturityDays,
+      irrigation,
+      waterNote,
+      location,
+      demoMode: Boolean(demoMode),
+    });
+    const tasks = normalizeCareScheduleTasks(rawTasks, cropName.trim(), Boolean(demoMode));
+    if (tasks.length === 0) {
+      return fail(res, 502, 'AI returned no valid care tasks');
+    }
+    return ok(res, { tasks });
+  } catch (err) {
+    return fail(res, 500, err instanceof Error ? err.message : 'Care schedule generation failed');
+  }
+});
+
 /** POST /api/v1/crops/diagnose — Z.ai GLM-4.6V-Flash vision proxy */
+const VISION_DIAGNOSIS_SYSTEM = `You are Verdora, an expert crop pathologist for Namibian farmers.
+Identify any visible plant (fruits, vegetables, grains, trees) and diagnose disease or pest damage from photos.
+Never label a plant photo as "not a crop". Only use "not a crop" when no plant is visible at all.
+Name specific diseases when possible (e.g. Black Sigatoka, anthracnose, blight, mosaic, rust).
+Always respond with valid JSON only.`;
+
 app.post('/api/v1/crops/diagnose', async (req, res) => {
   if (!ZAI_API_KEY) {
     return fail(res, 503, 'ZAI_API_KEY is not configured on the API server');
@@ -268,8 +652,11 @@ app.post('/api/v1/crops/diagnose', async (req, res) => {
       },
       body: JSON.stringify({
         model: ZAI_VISION_MODEL,
+        temperature: 0.25,
+        max_tokens: 1024,
         response_format: { type: 'json_object' },
         messages: [
+          { role: 'system', content: VISION_DIAGNOSIS_SYSTEM },
           {
             role: 'user',
             content: [
@@ -318,10 +705,14 @@ app.post('/api/v1/crops/diagnose', async (req, res) => {
 
     return ok(res, {
       id: randomUUID(),
-      cropName: parsed.cropName ?? 'Unknown crop',
+      cropName: parsed.cropName ?? 'Unidentified crop',
       disease: parsed.disease ?? null,
       confidence: Math.min(1, Math.max(0, confidence)),
-      treatment: parsed.treatment ?? 'Monitor the plant and scan again if symptoms persist.',
+      treatment:
+        parsed.treatment ??
+        (parsed.symptoms
+          ? `Observed: ${parsed.symptoms}. Monitor and scan again if symptoms spread.`
+          : 'Monitor the plant and scan again if symptoms persist.'),
       scannedAt: new Date().toISOString(),
     });
   } catch (err) {

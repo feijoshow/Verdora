@@ -109,11 +109,19 @@ export function CropScannerScreen({ navigation }: Props) {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
       if (photo?.uri) {
         setPreviewUri(photo.uri);
-        await runDiagnosis(photo.uri);
       }
     } catch {
       Alert.alert('Capture failed', 'Unable to take a photo. Please try again.');
     }
+  };
+
+  const handleAnalyzePreview = async () => {
+    if (!previewUri) return;
+    await runDiagnosis(previewUri);
+  };
+
+  const handleRetake = () => {
+    setPreviewUri(null);
   };
 
   const handlePickImage = async () => {
@@ -131,9 +139,7 @@ export function CropScannerScreen({ navigation }: Props) {
     });
 
     if (!result.canceled && result.assets[0]?.uri) {
-      const uri = result.assets[0].uri;
-      setPreviewUri(uri);
-      await runDiagnosis(uri);
+      setPreviewUri(result.assets[0].uri);
     }
   };
 
@@ -166,29 +172,14 @@ export function CropScannerScreen({ navigation }: Props) {
 
   return (
     <ScreenWrapper padded={false}>
-      <ScreenHeader
-        banner
-        title="Crop Scanner"
-        subtitle="Tag scans to a field — add plots in Profile first"
-      />
+      <ScreenHeader banner title="Scan" />
 
-      {user ? (
-        <View style={styles.fieldPicker}>
-          <FieldPicker
-            userId={user.id}
-            value={selectedFieldId}
-            onChange={(id, field) => {
-              setSelectedFieldId(id);
-              setSelectedField(field);
-            }}
-            label="Scan this field"
-          />
-        </View>
-      ) : null}
-
-      {/* Camera / preview area */}
       <View style={styles.cameraContainer}>
-        {previewUri && isAnalyzing ? (
+        {previewUri && !isAnalyzing ? (
+          <View style={styles.previewWrap}>
+            <Image source={{ uri: previewUri }} style={styles.preview} />
+          </View>
+        ) : previewUri && isAnalyzing ? (
           <View style={styles.previewWrap}>
             <Image source={{ uri: previewUri }} style={styles.preview} />
             <View style={styles.analyzingOverlay}>
@@ -217,31 +208,53 @@ export function CropScannerScreen({ navigation }: Props) {
         )}
       </View>
 
-      {/* Action buttons */}
       <View style={styles.actions}>
-        {Platform.OS !== 'web' && (
-          <Button
-            title={isAnalyzing ? 'Analyzing…' : 'Capture & Diagnose'}
-            onPress={handleCapture}
-            loading={isAnalyzing}
-            disabled={!cameraReady || isAnalyzing}
-            fullWidth
-          />
+        {previewUri && !isAnalyzing ? (
+          <>
+            <Button title="Analyze photo" onPress={handleAnalyzePreview} fullWidth />
+            <Button title="Retake" variant="outline" onPress={handleRetake} fullWidth />
+          </>
+        ) : (
+          <>
+            {Platform.OS !== 'web' && !previewUri && (
+              <Button
+                title="Take photo"
+                onPress={handleCapture}
+                disabled={!cameraReady || isAnalyzing}
+                fullWidth
+              />
+            )}
+            <Button
+              title={previewUri ? 'Choose another' : 'Upload from gallery'}
+              variant="outline"
+              onPress={handlePickImage}
+              disabled={isAnalyzing}
+              fullWidth
+            />
+          </>
         )}
-        <Button
-          title="Upload from Gallery"
-          variant="outline"
-          onPress={handlePickImage}
-          disabled={isAnalyzing}
-          fullWidth
-        />
       </View>
 
-      {/* Diagnosis history */}
-      <View style={styles.historySection}>
-        <SectionLabel style={styles.historyLabel}>Recent diagnoses</SectionLabel>
-        <DiagnosisHistoryList items={history} onPressItem={openHistoryItem} />
-      </View>
+      {user ? (
+        <View style={styles.fieldPicker}>
+          <FieldPicker
+            userId={user.id}
+            value={selectedFieldId}
+            onChange={(id, field) => {
+              setSelectedFieldId(id);
+              setSelectedField(field);
+            }}
+            label="Field (optional)"
+          />
+        </View>
+      ) : null}
+
+      {history.length > 0 ? (
+        <View style={styles.historySection}>
+          <SectionLabel style={styles.historyLabel}>Recent scans</SectionLabel>
+          <DiagnosisHistoryList items={history.slice(0, 3)} onPressItem={openHistoryItem} />
+        </View>
+      ) : null}
     </ScreenWrapper>
   );
 }
@@ -251,7 +264,7 @@ const styles = StyleSheet.create({
   title: { ...typography.h2, color: colors.primary },
   subtitle: { ...typography.bodySmall, marginTop: spacing.xs },
   cameraContainer: {
-    height: Platform.OS === 'web' ? 280 : 340,
+    height: Platform.OS === 'web' ? 260 : 300,
     marginHorizontal: spacing.md,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',

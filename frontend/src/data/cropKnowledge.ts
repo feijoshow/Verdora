@@ -68,6 +68,70 @@ export const CROP_KNOWLEDGE: Record<string, CropKnowledgeEntry> = {
     ],
     healthyTreatment: 'Keep bulbs dry before storage. Rotate with non-allium crops.',
   },
+  Banana: {
+    commonDiseases: [
+      {
+        name: 'Black Sigatoka (leaf spot)',
+        treatment:
+          'Remove severely infected leaves. Improve airflow. Apply approved fungicide (e.g. mancozeb or propiconazole) on a 10–14 day schedule in wet season. Avoid overhead irrigation on foliage.',
+        confidence: 0.82,
+      },
+      {
+        name: 'Panama disease (Fusarium wilt)',
+        treatment:
+          'No cure — remove and destroy infected plants. Do not replant banana on same soil for 3+ years. Use resistant varieties if available.',
+        confidence: 0.75,
+      },
+      {
+        name: 'Banana weevil borer',
+        treatment:
+          'Clean up corm debris. Use pheromone traps. Apply recommended insecticide to corm at planting.',
+        confidence: 0.7,
+      },
+    ],
+    healthyTreatment: 'Mulch around plants. Fertilize regularly. Remove old leaves to reduce disease pressure.',
+  },
+  Mango: {
+    commonDiseases: [
+      {
+        name: 'Anthracnose',
+        treatment:
+          'Prune dead wood. Apply copper fungicide at flower flush and after harvest. Remove infected fruit and leaves.',
+        confidence: 0.8,
+      },
+      {
+        name: 'Powdery mildew',
+        treatment: 'Improve airflow through pruning. Apply sulfur or approved fungicide at first white coating on leaves.',
+        confidence: 0.77,
+      },
+    ],
+    healthyTreatment: 'Prune for open canopy. Monitor during flowering and fruit set.',
+  },
+  Mahangu: {
+    commonDiseases: [
+      {
+        name: 'Downy mildew',
+        treatment: 'Use resistant varieties. Avoid dense planting. Fungicide if severe during humid periods.',
+        confidence: 0.74,
+      },
+      {
+        name: 'Ergot',
+        treatment: 'Remove infected heads before spores spread. Rotate crops. Use clean seed.',
+        confidence: 0.72,
+      },
+    ],
+    healthyTreatment: 'Plant with first rains. Weed early. Harvest when grain is hard.',
+  },
+  Beetroot: {
+    commonDiseases: [
+      {
+        name: 'Cercospora leaf spot',
+        treatment: 'Remove infected leaves. Rotate crops. Apply fungicide if spots spread rapidly.',
+        confidence: 0.79,
+      },
+    ],
+    healthyTreatment: 'Avoid waterlogging. Thin seedlings for airflow.',
+  },
 };
 
 export const DEFAULT_CROP_KNOWLEDGE: CropKnowledgeEntry = {

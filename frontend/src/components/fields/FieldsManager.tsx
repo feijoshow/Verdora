@@ -12,10 +12,11 @@ import { colors, spacing, typography, borderRadius } from '../../constants/theme
 
 interface FieldsManagerProps {
   userId: string;
+  embedded?: boolean;
 }
 
 /** CRUD for up to 5 named plots with optional coordinates */
-export function FieldsManager({ userId }: FieldsManagerProps) {
+export function FieldsManager({ userId, embedded = false }: FieldsManagerProps) {
   const [fields, setFields] = useState<FarmField[]>([]);
   const [name, setName] = useState('');
   const [latitude, setLatitude] = useState('');
@@ -86,9 +87,11 @@ export function FieldsManager({ userId }: FieldsManagerProps) {
     ]);
   };
 
-  return (
-    <Card style={styles.card}>
-      <Text style={styles.title}>My fields ({fields.length}/{MAX_FARM_FIELDS})</Text>
+  const body = (
+    <>
+      {!embedded ? (
+        <Text style={styles.title}>My fields ({fields.length}/{MAX_FARM_FIELDS})</Text>
+      ) : null}
       <Text style={styles.subtitle}>
         Name each plot so scans, calendar, and weather can be tagged per field.
       </Text>
@@ -151,8 +154,12 @@ export function FieldsManager({ userId }: FieldsManagerProps) {
       ) : (
         <Text style={styles.limit}>Maximum {MAX_FARM_FIELDS} fields reached.</Text>
       )}
-    </Card>
+    </>
   );
+
+  if (embedded) return <View>{body}</View>;
+
+  return <Card style={styles.card}>{body}</Card>;
 }
 
 const styles = StyleSheet.create({

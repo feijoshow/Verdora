@@ -9,7 +9,7 @@ interface ScreenHeaderProps {
   subtitle?: string;
   showBack?: boolean;
   rightAction?: { label: string; onPress: () => void };
-  /** Soft green band behind title — good for tab root screens */
+  /** Compact green header for tab screens */
   banner?: boolean;
 }
 
@@ -23,8 +23,35 @@ export function ScreenHeader({
   const navigation = useNavigation();
   const showNavRow = Boolean(showBack && navigation.canGoBack()) || Boolean(rightAction);
 
+  if (banner) {
+    return (
+      <View style={styles.banner}>
+        {showNavRow ? (
+          <View style={styles.row}>
+            {showBack && navigation.canGoBack() ? (
+              <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
+                <Ionicons name="chevron-back" size={22} color={colors.white} />
+              </Pressable>
+            ) : (
+              <View style={styles.backPlaceholder} />
+            )}
+            {rightAction ? (
+              <Pressable onPress={rightAction.onPress} hitSlop={8}>
+                <Text style={styles.rightActionLight}>{rightAction.label}</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.backPlaceholder} />
+            )}
+          </View>
+        ) : null}
+        <Text style={styles.bannerTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.bannerSubtitle}>{subtitle}</Text> : null}
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.wrap, banner && styles.wrapBanner]}>
+    <View style={styles.wrap}>
       {showNavRow ? (
         <View style={styles.row}>
           {showBack && navigation.canGoBack() ? (
@@ -51,12 +78,12 @@ export function ScreenHeader({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: spacing.md, marginTop: spacing.xs },
-  wrapBanner: {
-    backgroundColor: colors.primarySoft,
+  wrap: { marginBottom: spacing.lg, marginTop: spacing.xs },
+  banner: {
+    backgroundColor: colors.primaryDark,
     marginHorizontal: -spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
     paddingBottom: spacing.md,
     marginBottom: spacing.lg,
     borderBottomLeftRadius: borderRadius.xl,
@@ -77,6 +104,18 @@ const styles = StyleSheet.create({
   backPlaceholder: { minWidth: 72 },
   backText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
   rightAction: { ...typography.bodySmall, color: colors.secondaryDark, fontWeight: '600' },
-  title: { ...typography.h2, color: colors.primaryDark, letterSpacing: -0.3 },
-  subtitle: { ...typography.bodySmall, marginTop: spacing.xs, lineHeight: 20 },
+  rightActionLight: { ...typography.bodySmall, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+  title: { ...typography.h2, color: colors.text, letterSpacing: -0.3 },
+  subtitle: { ...typography.bodySmall, marginTop: spacing.xs, lineHeight: 20, color: colors.textSecondary },
+  bannerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.white,
+    letterSpacing: -0.3,
+  },
+  bannerSubtitle: {
+    ...typography.bodySmall,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 4,
+  },
 });
