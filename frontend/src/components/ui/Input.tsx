@@ -1,21 +1,55 @@
-import React from 'react';
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { colors, borderRadius, spacing, typography } from '../../constants/theme';
+import React, { useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, borderRadius, spacing, touchTarget, typography } from '../../constants/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
 }
 
-export function Input({ label, error, style, ...rest }: InputProps) {
+export function Input({ label, error, style, secureTextEntry, ...rest }: InputProps) {
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const isPassword = Boolean(secureTextEntry);
+
   return (
     <View style={styles.wrapper}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <TextInput
-        style={[styles.input, error && styles.inputError, style]}
-        placeholderTextColor={colors.textMuted}
-        {...rest}
-      />
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[
+            styles.input,
+            isPassword && styles.inputWithToggle,
+            error && styles.inputError,
+            style,
+          ]}
+          placeholderTextColor={colors.textMuted}
+          secureTextEntry={isPassword && !passwordVisible}
+          {...rest}
+        />
+        {isPassword ? (
+          <Pressable
+            style={styles.toggle}
+            onPress={() => setPasswordVisible((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={passwordVisible ? 'eye-off-outline' : 'eye-outline'}
+              size={22}
+              color={colors.textMuted}
+            />
+          </Pressable>
+        ) : null}
+      </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
@@ -24,6 +58,7 @@ export function Input({ label, error, style, ...rest }: InputProps) {
 const styles = StyleSheet.create({
   wrapper: { marginBottom: spacing.md },
   label: { ...typography.bodySmall, marginBottom: spacing.xs, fontWeight: '500' },
+  inputRow: { position: 'relative', justifyContent: 'center' },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -34,6 +69,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.primarySoft,
   },
+  inputWithToggle: { paddingRight: spacing.xl + touchTarget },
   inputError: { borderColor: colors.error },
+  toggle: {
+    position: 'absolute',
+    right: spacing.sm,
+    height: touchTarget,
+    width: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   error: { ...typography.caption, color: colors.error, marginTop: spacing.xs },
 });

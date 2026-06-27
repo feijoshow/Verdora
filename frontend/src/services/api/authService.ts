@@ -1,4 +1,4 @@
-import { hasRestApi } from '../../config/env';
+import { hasAiApi, hasRestApi } from '../../config/env';
 import type { User } from '../../types';
 import { trackUserProfile } from '../analytics/dataCollectionService';
 import { getSupabase, isSupabaseConfigured } from '../supabase/client';
@@ -7,7 +7,7 @@ import {
   upsertUser,
 } from '../supabase/repositories/usersRepository';
 import { API_ENDPOINTS } from './endpoints';
-import { apiPost, apiClient } from './client';
+import { apiPost, apiClient, aiApiPost } from './client';
 import { tokenStorage } from './tokenStorage';
 import { applyVerdoraLocation, isValidVerdoraLocation } from '../../utils/locationHelpers';
 import type { LoginRequest, LoginResponse, RegisterRequest } from './types';
@@ -138,9 +138,17 @@ export async function register(payload: RegisterRequest): Promise<LoginResponse>
   return supabaseRegister(payload);
 }
 
-/** Sends a 6-digit recovery code to the user's email (Supabase Auth). */
+/** Sends a 6-digit recovery code to the user's email. */
 export async function requestPasswordResetCode(email: string): Promise<void> {
   assertAuthConfigured();
+
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) throw new Error('Email is required');
+
+  if (hasAiApi) {
+    await aiApiPost<{ sent: boolean }>('/api/v1/auth/forgot-password', { email: trimmed });
+    return;
+  }
 
   if (hasRestApi && !isSupabaseConfigured()) {
     throw new Error('Password reset requires Supabase authentication.');
@@ -148,9 +156,6 @@ export async function requestPasswordResetCode(email: string): Promise<void> {
 
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase is not configured');
-
-  const trimmed = email.trim().toLowerCase();
-  if (!trimmed) throw new Error('Email is required');
 
   const { error } = await sb.auth.resetPasswordForEmail(trimmed);
   if (error) throw new Error(error.message);

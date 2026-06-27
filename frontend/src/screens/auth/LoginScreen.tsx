@@ -2,10 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, Card, Input, ScreenWrapper } from '../../components/ui';
-import { DEMO_ACCOUNTS } from '../../constants/demoAccounts';
-import { env } from '../../config/env';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { colors, spacing, typography } from '../../constants/theme';
 import type { AuthStackParamList } from '../../navigation/types';
 
 const LOGO = require('../../../assets/verdora-logo.png');
@@ -64,28 +62,6 @@ export function LoginScreen({ navigation, route }: Props) {
         {success ? <Text style={styles.success}>{success}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        {env.demoMode ? (
-          <View style={styles.demoWrap}>
-            <Text style={styles.demoLabel}>Demo accounts</Text>
-            {DEMO_ACCOUNTS.map((account) => (
-              <Pressable
-                key={account.email}
-                style={styles.demoChip}
-                onPress={() => {
-                  setEmail(account.email);
-                  setPassword(account.password);
-                  setError('');
-                }}
-              >
-                <Text style={styles.demoChipText}>{account.label}</Text>
-              </Pressable>
-            ))}
-            <Text style={styles.demoHint}>
-              Tap to fill credentials, then sign in. Run supabase/seed_demo.sql after first registration.
-            </Text>
-          </View>
-        ) : null}
-
         <Button title="Sign In" onPress={handleLogin} loading={loading} fullWidth />
       </Card>
 
@@ -109,16 +85,4 @@ const styles = StyleSheet.create({
   forgotText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
   success: { ...typography.bodySmall, color: colors.success, marginBottom: spacing.md },
   error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
-  demoWrap: { marginBottom: spacing.md, gap: spacing.sm },
-  demoLabel: { ...typography.sectionLabel, marginTop: 0 },
-  demoChip: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.primarySoft,
-  },
-  demoChipText: { ...typography.bodySmall, color: colors.primaryDark, fontWeight: '600' },
-  demoHint: { ...typography.caption, lineHeight: 18 },
 });

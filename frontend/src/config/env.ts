@@ -69,9 +69,6 @@ export const env = {
     'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   ),
 
-  /** Show demo login shortcuts and enable demo docs (set to 1 for tester builds) */
-  demoMode: readEnv('EXPO_PUBLIC_DEMO_MODE') === '1',
-
   /** Tester feedback inbox for Profile mailto link */
   feedbackEmail: readEnv('EXPO_PUBLIC_FEEDBACK_EMAIL'),
 } as const;

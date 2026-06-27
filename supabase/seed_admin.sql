@@ -3,7 +3,7 @@
 
 update public.users
 set role = 'admin', updated_at = now()
-where email = 'you@example.com';
+where email = 'tukunamulundu@gmail.com';
 
 -- Verify:
 -- select id, email, role from public.users where role = 'admin';
