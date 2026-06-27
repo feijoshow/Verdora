@@ -14,6 +14,9 @@ import type { FarmerTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<FarmerTabParamList>();
 
+/** Must match useScrollBottomPadding TAB_BAR_BASE_HEIGHT */
+export const TAB_BAR_CONTENT_HEIGHT = 64;
+
 type TabIconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<keyof FarmerTabParamList, { active: TabIconName; inactive: TabIconName }> = {
@@ -30,7 +33,7 @@ function TabIcon({ routeName, focused }: { routeName: keyof FarmerTabParamList; 
   return (
     <Ionicons
       name={icon}
-      size={focused ? 24 : 22}
+      size={22}
       color={focused ? colors.primary : colors.textMuted}
     />
   );
@@ -38,7 +41,8 @@ function TabIcon({ routeName, focused }: { routeName: keyof FarmerTabParamList; 
 
 export function FarmerTabNavigator() {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 56 + Math.max(insets.bottom, Platform.OS === 'web' ? 8 : 0);
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 12 : 10);
+  const tabBarHeight = TAB_BAR_CONTENT_HEIGHT + bottomPad;
 
   return (
     <Tab.Navigator
@@ -53,11 +57,23 @@ export function FarmerTabNavigator() {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          paddingTop: 6,
           height: tabBarHeight,
-          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 8,
+          paddingBottom: bottomPad,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
+        tabBarItemStyle: {
+          paddingVertical: 2,
+        },
+        tabBarIconStyle: {
+          marginBottom: 2,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          marginTop: 0,
+          marginBottom: 0,
+          lineHeight: 12,
+        },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />

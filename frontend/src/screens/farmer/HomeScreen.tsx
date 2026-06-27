@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,7 +8,7 @@ import { FarmCalendarDashboard } from '../../components/home/FarmCalendarDashboa
 import { HomeHero } from '../../components/home/HomeHero';
 import { QuickActionsBar } from '../../components/home/QuickActionsBar';
 import { OutbreakNearYouBanner } from '../../components/intelligence/OutbreakNearYouBanner';
-import { Card, EmptyState, InlineLoader, ScreenWrapper, SectionLabel } from '../../components/ui';
+import { EmptyState, InlineLoader, ScreenWrapper } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { listMaintenanceLogs, deleteMaintenanceLog, deleteMaintenanceLogsForCrop } from '../../services/calendar/maintenanceService';
 import { listScheduledCareTasks } from '../../services/calendar/careScheduleService';
@@ -26,7 +26,7 @@ import {
 import type { DiseaseAlert } from '../../types/analytics';
 import type { MaintenanceLog, MaintenanceType, ScheduledCareTask } from '../../types/maintenance';
 import type { PlantingEvent } from '../../types';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { colors, spacing, typography } from '../../constants/theme';
 import type { FarmerStackParamList, FarmerTabParamList } from '../../navigation/types';
 
 type Props = CompositeScreenProps<
@@ -227,31 +227,7 @@ export function HomeScreen({ navigation }: Props) {
         />
       )}
 
-      {summary && summary.recentScans.length > 0 ? (
-        <>
-          <SectionLabel>Latest scan</SectionLabel>
-          <Pressable
-            onPress={() =>
-              parentNav?.navigate('DiagnosisResults', { result: summary.recentScans[0] })
-            }
-          >
-            <Card style={styles.scanCard}>
-              <View style={styles.scanRow}>
-                <View style={styles.scanIcon}>
-                  <Ionicons name="leaf" size={18} color={colors.primary} />
-                </View>
-                <View style={styles.scanText}>
-                  <Text style={styles.scanCrop}>{summary.recentScans[0].cropName}</Text>
-                  <Text style={styles.scanMeta}>
-                    {summary.recentScans[0].disease ?? 'Healthy'}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </View>
-            </Card>
-          </Pressable>
-        </>
-      ) : !loading && events.length === 0 ? (
+      {!loading && events.length === 0 ? (
         <EmptyState
           message="Your calendar is empty — tap Plant to schedule your first crop."
           variant="muted"
@@ -272,17 +248,4 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   notifyChipText: { ...typography.caption, color: colors.textMuted },
-  scanCard: { marginBottom: spacing.lg },
-  scanRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  scanIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scanText: { flex: 1 },
-  scanCrop: { ...typography.bodySmall, fontWeight: '700', color: colors.primaryDark },
-  scanMeta: { ...typography.caption, marginTop: 2 },
 });
