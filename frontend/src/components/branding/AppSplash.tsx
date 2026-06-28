@@ -95,7 +95,7 @@ export function AppSplash({ ready, onDone }: AppSplashProps) {
         </Animated.View>
         <Animated.Text style={[styles.title, { opacity: titleOpacity }]}>Verdora</Animated.Text>
         <Animated.Text style={[styles.tagline, { opacity: titleOpacity }]}>
-          Agricultural intelligence for your farm
+          Monitor. Predict. Grow.
         </Animated.Text>
       </View>
     </Animated.View>

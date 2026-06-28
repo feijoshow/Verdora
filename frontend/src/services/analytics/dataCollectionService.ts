@@ -387,3 +387,27 @@ export async function getAdminDashboardInsights(): Promise<AdminDashboardInsight
   };
 }
 
+export async function setLocalUserActiveStatus(userId: string, isActive: boolean): Promise<void> {
+  const db = await loadDb();
+  const idx = db.users.findIndex((u) => u.id === userId);
+  if (idx >= 0) {
+    db.users[idx] = { ...db.users[idx], isActive };
+    await saveDb(db);
+  }
+}
+
+export async function removeLocalUserAccount(userId: string): Promise<void> {
+  const db = await loadDb();
+  db.users = db.users.filter((u) => u.id !== userId);
+  db.cropScans = db.cropScans.filter((r) => r.userId !== userId);
+  db.farmingRecords = db.farmingRecords.filter((r) => r.userId !== userId);
+  db.environmentLogs = db.environmentLogs.filter((r) => r.userId !== userId);
+  db.chatQuestions = db.chatQuestions.filter((r) => r.userId !== userId);
+  await saveDb(db);
+}
+
+/** Recompute dashboard insights from latest local + cloud data */
+export async function regenerateAdminInsights(): Promise<AdminDashboardInsights> {
+  return getAdminDashboardInsights();
+}
+

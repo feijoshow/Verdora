@@ -19,6 +19,8 @@ import { toApiError } from '../../services/api/errors';
 import { DiseaseAlertCard } from '../../components/intelligence/DiseaseAlertCard';
 import { KnowledgeGapCard } from '../../components/intelligence/KnowledgeGapCard';
 import { PlantingInsightCard } from '../../components/intelligence/PlantingInsightCard';
+import { AdminInsightsCharts } from '../../components/admin/AdminInsightsCharts';
+import { regenerateInsights } from '../../services/admin/adminOperationsService';
 import type { AdminDashboardInsights } from '../../types/analytics';
 import type { AdminStackParamList } from '../../navigation/types';
 import { useTheme } from '../../context/ThemeContext';
@@ -33,6 +35,7 @@ export function AdminDashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<'json' | 'pdf' | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   const styles = useMemo(
     () =>
@@ -81,6 +84,7 @@ export function AdminDashboardScreen() {
           marginBottom: spacing.lg,
         },
         exportBtn: { flex: 1 },
+        regenerateBtn: { marginBottom: spacing.md },
       }),
     [colors, typography],
   );
@@ -102,6 +106,22 @@ export function AdminDashboardScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleRegenerateInsights = async () => {
+    setRegenerating(true);
+    try {
+      const result = await regenerateInsights();
+      await load(true);
+      Alert.alert(
+        'Insights regenerated',
+        `${result.alerts} disease alerts · ${result.gaps} knowledge gaps · ${result.planting} planting insights\nSource: ${result.source === 'cloud' ? 'Supabase' : 'local analytics'}`,
+      );
+    } catch (err) {
+      Alert.alert('Regeneration failed', toApiError(err).message);
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const handleExport = async (format: 'json' | 'pdf') => {
     setExportingFormat(format);
@@ -163,6 +183,7 @@ export function AdminDashboardScreen() {
             <StatBox label="Farming records" value={data.summary.totalFarmingRecords} />
             <StatBox label="Chat questions" value={data.summary.totalChatQuestions} />
           </View>
+          <AdminInsightsCharts data={data} />
           <Card variant="highlight">
             <Text style={styles.cardTitle}>Regional intelligence (aggregated only)</Text>
             <Text style={styles.cardBody}>
@@ -205,6 +226,14 @@ export function AdminDashboardScreen() {
 
       {tab === 'intelligence' && (
         <>
+          <Button
+            title="Regenerate insights"
+            onPress={handleRegenerateInsights}
+            loading={regenerating}
+            fullWidth
+            style={styles.regenerateBtn}
+          />
+          <AdminInsightsCharts data={data} />
           <Card variant="highlight">
             <Text style={styles.cardTitle}>Actionable regional intelligence</Text>
             <Text style={styles.cardBody}>
@@ -288,6 +317,9 @@ export function AdminDashboardScreen() {
                 <Text style={styles.itemMeta}>Crops: {u.cropsPlanted?.join(', ') || 'None'}</Text>
                 <Text style={styles.itemMeta}>
                   Data consent: {u.dataConsent ? '✓ Opted in' : '✗ Opted out'}
+                </Text>
+                <Text style={styles.itemMeta}>
+                  Status: {u.isActive === false ? '⛔ Deactivated' : '✓ Active'}
                 </Text>
                 <Text style={styles.tapHint}>View scans, chat, calendar & weather →</Text>
               </Card>
@@ -392,6 +424,7 @@ export function AdminDashboardScreen() {
 
       {tab === 'chat' && (
         <>
+          <AdminInsightsCharts data={data} />
           <Card variant="highlight">
             <Text style={styles.cardTitle}>Hidden gold — market signals</Text>
             <Text style={styles.cardBody}>

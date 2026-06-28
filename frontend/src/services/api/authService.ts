@@ -65,6 +65,11 @@ async function supabaseLogin({ email, password }: LoginRequest): Promise<LoginRe
     await upsertUser(user, false);
   }
 
+  if (user.isActive === false) {
+    await sb.auth.signOut();
+    throw new Error('This account has been deactivated. Please contact support.');
+  }
+
   await trackUserProfile(user);
   await tokenStorage.setTokens({
     accessToken: data.session.access_token,
@@ -234,7 +239,14 @@ export async function getCurrentUser(): Promise<User | null> {
 
   const session = data.session;
   const profile = await fetchUserById(session.user.id);
-  if (profile) return profile;
+  if (profile) {
+    if (profile.isActive === false) {
+      await sb.auth.signOut();
+      await tokenStorage.clearTokens();
+      return null;
+    }
+    return profile;
+  }
 
   return {
     id: session.user.id,

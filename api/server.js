@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { runInsightAggregation } from './adminAggregation.js';
 dotenv.config({ path: join(__dirname, '.env') });
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -30,7 +30,7 @@ const app = express();
 app.use(
   cors({
     origin: corsOrigins,
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   }),
 );
@@ -49,6 +49,40 @@ function getSupabaseAdmin() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+}
+
+async function requireAdmin(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) {
+    return fail(res, 401, 'Authorization required');
+  }
+
+  const sb = getSupabaseAdmin();
+  if (!sb) {
+    return fail(res, 503, 'Supabase admin credentials are not configured on the API server');
+  }
+
+  const token = header.slice(7);
+  const { data: userData, error: userError } = await sb.auth.getUser(token);
+  if (userError || !userData?.user) {
+    return fail(res, 401, 'Invalid or expired session');
+  }
+
+  const { data: profile, error: profileError } = await sb
+    .from('users')
+    .select('role, is_active')
+    .eq('id', userData.user.id)
+    .maybeSingle();
+
+  if (profileError || profile?.role !== 'admin') {
+    return fail(res, 403, 'Admin access only');
+  }
+  if (profile?.is_active === false) {
+    return fail(res, 403, 'Admin account is deactivated');
+  }
+
+  req.adminUserId = userData.user.id;
+  next();
 }
 
 async function sendPasswordResetEmail(to, code) {
@@ -717,6 +751,104 @@ app.post('/api/v1/crops/diagnose', async (req, res) => {
     });
   } catch (err) {
     return fail(res, 500, err instanceof Error ? err.message : 'Scan proxy failed');
+  }
+});
+
+app.post('/api/v1/admin/regenerate-insights', requireAdmin, async (req, res) => {
+  try {
+    const sb = getSupabaseAdmin();
+    if (!sb) {
+      return fail(res, 503, 'Supabase admin credentials are not configured');
+    }
+
+    const result = await runInsightAggregation(sb);
+    return ok(res, {
+      alerts: result.alerts,
+      gaps: result.gaps,
+      planting: result.planting,
+      source: 'cloud',
+      regionalIntelligence: {
+        diseaseAlerts: result.diseaseAlerts,
+        knowledgeGaps: result.knowledgeGaps,
+        plantingInsights: result.plantingInsights,
+        lastAggregatedAt: result.lastAggregatedAt,
+      },
+    });
+  } catch (err) {
+    return fail(res, 500, err instanceof Error ? err.message : 'Insight regeneration failed');
+  }
+});
+
+app.patch('/api/v1/admin/users/:id/status', requireAdmin, async (req, res) => {
+  try {
+    const sb = getSupabaseAdmin();
+    if (!sb) {
+      return fail(res, 503, 'Supabase admin credentials are not configured');
+    }
+
+    const { id } = req.params;
+    const isActive = req.body?.isActive;
+    if (typeof isActive !== 'boolean') {
+      return fail(res, 400, 'isActive (boolean) is required');
+    }
+
+    const { data: target, error: fetchError } = await sb
+      .from('users')
+      .select('id, role')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError || !target) {
+      return fail(res, 404, 'User not found');
+    }
+    if (target.role === 'admin') {
+      return fail(res, 403, 'Cannot change status of admin accounts');
+    }
+
+    const { error } = await sb
+      .from('users')
+      .update({ is_active: isActive, updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) {
+      return fail(res, 500, error.message);
+    }
+
+    return ok(res, { id, isActive });
+  } catch (err) {
+    return fail(res, 500, err instanceof Error ? err.message : 'Could not update user status');
+  }
+});
+
+app.delete('/api/v1/admin/users/:id', requireAdmin, async (req, res) => {
+  try {
+    const sb = getSupabaseAdmin();
+    if (!sb) {
+      return fail(res, 503, 'Supabase admin credentials are not configured');
+    }
+
+    const { id } = req.params;
+    const { data: target, error: fetchError } = await sb
+      .from('users')
+      .select('id, role')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError || !target) {
+      return fail(res, 404, 'User not found');
+    }
+    if (target.role === 'admin') {
+      return fail(res, 403, 'Cannot delete admin accounts');
+    }
+
+    const { error: deleteError } = await sb.auth.admin.deleteUser(id);
+    if (deleteError) {
+      return fail(res, 500, deleteError.message);
+    }
+
+    return ok(res, { id, deleted: true });
+  } catch (err) {
+    return fail(res, 500, err instanceof Error ? err.message : 'Could not delete user');
   }
 });
 

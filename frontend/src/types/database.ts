@@ -27,6 +27,7 @@ export interface DbUser {
   farming_methods: string[];
   data_consent: boolean;
   data_consent_at: string | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

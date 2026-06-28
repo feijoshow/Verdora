@@ -10,9 +10,14 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
 import { Button, Card, EmptyState, ScreenLoader, ScreenWrapper } from '../../components/ui';
 import { exportFarmerReport } from '../../services/api/adminService';
+import {
+  deleteFarmerAccount,
+  setFarmerAccountActive,
+} from '../../services/admin/adminOperationsService';
 import { getUserActivityProfile } from '../../services/admin/userActivityService';
 import { toApiError } from '../../services/api/errors';
 import type { UserActivityProfile } from '../../types/analytics';
@@ -24,11 +29,13 @@ type Props = NativeStackScreenProps<AdminStackParamList, 'UserDetail'>;
 
 export function AdminUserDetailScreen({ route }: Props) {
   const { userId } = route.params;
+  const navigation = useNavigation();
   const { colors, typography } = useTheme();
   const [profile, setProfile] = useState<UserActivityProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<'json' | 'pdf' | null>(null);
+  const [accountBusy, setAccountBusy] = useState(false);
   const [error, setError] = useState('');
 
   const styles = useMemo(
@@ -41,6 +48,16 @@ export function AdminUserDetailScreen({ route }: Props) {
         sectionTitle: { ...typography.h3, marginBottom: spacing.sm, color: colors.text },
         exportRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
         exportBtn: { flex: 1 },
+        accountRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+        accountBtn: { flex: 1 },
+        dangerBtn: { marginBottom: spacing.lg },
+        statusBadge: {
+          ...typography.caption,
+          fontWeight: '700',
+          marginTop: spacing.xs,
+          color: colors.textSecondary,
+        },
+        statusInactive: { color: colors.error },
         itemCard: { marginBottom: spacing.sm },
         itemTitle: { ...typography.h3, fontSize: 15, color: colors.text },
         itemMeta: { ...typography.caption, marginTop: 4, color: colors.textMuted },
@@ -91,6 +108,64 @@ export function AdminUserDetailScreen({ route }: Props) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleToggleActive = () => {
+    if (!profile) return;
+    const isActive = profile.user.isActive !== false;
+    const nextActive = !isActive;
+    Alert.alert(
+      nextActive ? 'Reactivate account' : 'Deactivate account',
+      nextActive
+        ? `${profile.user.name} will be able to sign in again.`
+        : `${profile.user.name} will not be able to sign in until reactivated.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: nextActive ? 'Reactivate' : 'Deactivate',
+          style: nextActive ? 'default' : 'destructive',
+          onPress: async () => {
+            setAccountBusy(true);
+            try {
+              await setFarmerAccountActive(userId, nextActive);
+              await load(true);
+              Alert.alert('Updated', nextActive ? 'Account reactivated.' : 'Account deactivated.');
+            } catch (err) {
+              Alert.alert('Could not update account', toApiError(err).message);
+            } finally {
+              setAccountBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    if (!profile) return;
+    Alert.alert(
+      'Delete account permanently',
+      `This removes ${profile.user.name}'s login and all linked data. This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setAccountBusy(true);
+            try {
+              await deleteFarmerAccount(userId);
+              Alert.alert('Account deleted', 'The farmer account was removed.');
+              navigation.goBack();
+            } catch (err) {
+              Alert.alert('Delete failed', toApiError(err).message);
+            } finally {
+              setAccountBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const handleExport = async (format: 'json' | 'pdf') => {
     setExportingFormat(format);
@@ -151,7 +226,33 @@ export function AdminUserDetailScreen({ route }: Props) {
             ? 'This farmer opted in — all activity below was collected with their permission.'
             : 'Limited profile data only. Activity may be incomplete.'}
         </Text>
+        <Text
+          style={[
+            styles.statusBadge,
+            user.isActive === false && styles.statusInactive,
+          ]}
+        >
+          Account status: {user.isActive === false ? 'Deactivated' : 'Active'}
+        </Text>
       </Card>
+
+      <Text style={styles.sectionTitle}>Account management</Text>
+      <View style={styles.accountRow}>
+        <Button
+          title={user.isActive === false ? 'Reactivate' : 'Deactivate'}
+          variant="outline"
+          onPress={handleToggleActive}
+          loading={accountBusy}
+          style={styles.accountBtn}
+        />
+        <Button
+          title="Delete account"
+          variant="secondary"
+          onPress={handleDeleteAccount}
+          disabled={accountBusy}
+          style={styles.accountBtn}
+        />
+      </View>
 
       <View style={styles.statGrid}>
         <StatPill label="Scans" value={stats.scanCount} />

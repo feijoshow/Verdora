@@ -82,6 +82,14 @@ export const aiApiClient: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 });
 
+aiApiClient.interceptors.request.use(async (config) => {
+  const token = await tokenStorage.getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 aiApiClient.interceptors.response.use(
   (response) => {
     const body = response.data;

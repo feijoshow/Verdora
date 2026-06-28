@@ -33,5 +33,7 @@ export interface User {
   /** GDPR-style consent for farming & usage data collection */
   dataConsent?: boolean;
   dataConsentAt?: string;
+  /** When false, account is deactivated by admin */
+  isActive?: boolean;
   createdAt?: string;
 }

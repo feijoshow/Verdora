@@ -29,6 +29,7 @@ create table if not exists public.users (
   farming_methods jsonb not null default '[]'::jsonb,
   data_consent boolean not null default false,
   data_consent_at timestamptz,
+  is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

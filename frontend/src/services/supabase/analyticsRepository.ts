@@ -39,6 +39,7 @@ function dbUserToProfile(u: DbUser): UserProfileRecord {
     soilType: u.soil_type ?? undefined,
     farmingMethods: u.farming_methods ?? [],
     dataConsent: u.data_consent,
+    isActive: u.is_active ?? true,
     createdAt: u.created_at,
   };
   profile.location = getUserLocationDisplay(profile);

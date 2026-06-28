@@ -45,6 +45,8 @@ export const API_ENDPOINTS = {
     dashboard: '/api/v1/admin/dashboard',
     userById: (id: string) => `/api/v1/admin/users/${id}`,
     exportReport: '/api/v1/admin/export',
+    regenerateInsights: '/api/v1/admin/regenerate-insights',
+    userStatus: (id: string) => `/api/v1/admin/users/${id}/status`,
   },
 } as const;
 

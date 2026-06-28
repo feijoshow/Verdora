@@ -26,6 +26,7 @@ export function dbUserToUser(row: DbUser): User {
     farmingMethods: row.farming_methods ?? [],
     dataConsent: row.data_consent,
     dataConsentAt: row.data_consent_at ?? undefined,
+    isActive: row.is_active ?? true,
     createdAt: row.created_at,
   };
   user.location = getUserLocationDisplay(user);
@@ -57,6 +58,7 @@ export function userToDbRow(user: User, dataConsent: boolean): InsertDbUser {
     farming_methods: user.farmingMethods ?? [],
     data_consent: dataConsent,
     data_consent_at: dataConsent ? now : null,
+    is_active: user.isActive !== false,
     created_at: user.createdAt ?? now,
     updated_at: now,
   };
@@ -108,6 +110,21 @@ export async function fetchAllUsers(): Promise<DbUser[]> {
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as import('../../../types/database').DbUser[];
+}
+
+export async function setUserActiveStatus(userId: string, isActive: boolean): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase is not configured');
+
+  const { error } = await sb
+    .from('users')
+    .update({
+      is_active: isActive,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (error) throw new Error(error.message);
 }
 
 export function isCloudEnabled(): boolean {
