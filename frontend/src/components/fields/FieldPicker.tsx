@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { FarmField } from '../../types/field';
 import {
@@ -6,7 +6,8 @@ import {
   listFarmFields,
   setLastSelectedFieldId,
 } from '../../services/fields/fieldService';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 
 interface FieldPickerProps {
   userId: string;
@@ -28,8 +29,32 @@ export function FieldPicker({
   allowNone = false,
   noneLabel = 'Whole farm',
 }: FieldPickerProps) {
+  const { colors, typography } = useTheme();
   const [fields, setFields] = useState<FarmField[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: { marginBottom: spacing.md },
+        label: { ...typography.bodySmall, fontWeight: '600', marginBottom: spacing.sm, color: colors.text },
+        hint: { ...typography.caption, fontStyle: 'italic', color: colors.textMuted },
+        empty: { ...typography.caption, lineHeight: 18, color: colors.textMuted },
+        row: { flexDirection: 'row', gap: spacing.sm },
+        chip: {
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          borderRadius: borderRadius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+        },
+        chipActive: { borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
+        chipText: { ...typography.bodySmall, color: colors.textSecondary },
+        chipTextActive: { color: colors.primary, fontWeight: '700' },
+      }),
+    [colors, typography],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,7 +68,7 @@ export function FieldPicker({
     setLoading(false);
   }, [allowNone, onChange, userId, value]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     load();
   }, [load]);
 
@@ -101,22 +126,3 @@ export function FieldPicker({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { marginBottom: spacing.md },
-  label: { ...typography.bodySmall, fontWeight: '600', marginBottom: spacing.sm },
-  hint: { ...typography.caption, fontStyle: 'italic' },
-  empty: { ...typography.caption, lineHeight: 18, color: colors.textMuted },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  chipActive: { borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
-  chipText: { ...typography.bodySmall, color: colors.textSecondary },
-  chipTextActive: { color: colors.primary, fontWeight: '700' },
-});

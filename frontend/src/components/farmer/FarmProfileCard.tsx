@@ -1,16 +1,31 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Input } from '../ui';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 
 /** Optional farm details — collected for admin analytics */
 export function FarmProfileCard() {
   const { user, updateProfile } = useAuth();
+  const { colors, typography } = useTheme();
   const [soilType, setSoilType] = useState(user?.soilType ?? '');
   const [methods, setMethods] = useState(user?.farmingMethods?.join(', ') ?? '');
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(!user?.soilType);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: { marginBottom: spacing.lg },
+        title: { ...typography.h3, fontSize: 16, color: colors.text },
+        subtitle: { ...typography.caption, marginBottom: spacing.md, color: colors.textSecondary },
+        row: { flexDirection: 'row', gap: spacing.sm },
+        btn: { flex: 1 },
+        saved: { ...typography.bodySmall, marginBottom: spacing.sm, color: colors.text },
+      }),
+    [colors, typography],
+  );
 
   if (!user || user.role !== 'farmer') return null;
 
@@ -70,12 +85,3 @@ export function FarmProfileCard() {
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { marginBottom: spacing.lg },
-  title: { ...typography.h3, fontSize: 16, color: colors.primaryDark },
-  subtitle: { ...typography.caption, marginBottom: spacing.md },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  btn: { flex: 1 },
-  saved: { ...typography.bodySmall, marginBottom: spacing.sm },
-});

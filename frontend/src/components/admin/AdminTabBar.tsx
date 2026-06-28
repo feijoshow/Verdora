@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 
 export type AdminTab =
   | 'overview'
@@ -27,6 +28,31 @@ interface AdminTabBarProps {
 }
 
 export function AdminTabBar({ active, onChange }: AdminTabBarProps) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        scroll: { marginBottom: spacing.md },
+        chip: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          marginRight: spacing.sm,
+          borderRadius: borderRadius.full,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+        emoji: { fontSize: 14, marginRight: 4 },
+        label: { ...typography.caption, fontWeight: '600', color: colors.textSecondary },
+        labelActive: { color: colors.white },
+      }),
+    [colors, typography],
+  );
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
       {TABS.map((tab) => (
@@ -42,22 +68,3 @@ export function AdminTabBar({ active, onChange }: AdminTabBarProps) {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  scroll: { marginBottom: spacing.md },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginRight: spacing.sm,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  emoji: { fontSize: 14, marginRight: 4 },
-  label: { ...typography.caption, fontWeight: '600', color: colors.textSecondary },
-  labelActive: { color: colors.white },
-});

@@ -1,18 +1,31 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, Card, Input, ScreenWrapper } from '../../components/ui';
 import { requestPasswordResetCode } from '../../services/api/authService';
 import { toApiError } from '../../services/api/errors';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
 export function ForgotPasswordScreen({ navigation }: Props) {
+  const { colors, typography } = useTheme();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        title: { ...typography.h1, color: colors.text, textAlign: 'center' },
+        subtitle: { ...typography.bodySmall, marginTop: spacing.sm, marginBottom: spacing.lg, textAlign: 'center', color: colors.textSecondary },
+        formCard: { width: '100%', maxWidth: 440, alignSelf: 'center', marginBottom: spacing.md },
+        error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
+      }),
+    [colors, typography],
+  );
 
   const handleSendCode = async () => {
     setError('');
@@ -56,10 +69,3 @@ export function ForgotPasswordScreen({ navigation }: Props) {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  title: { ...typography.h1, color: colors.primaryDark, textAlign: 'center' },
-  subtitle: { ...typography.bodySmall, marginTop: spacing.sm, marginBottom: spacing.lg, textAlign: 'center' },
-  formCard: { width: '100%', maxWidth: 440, alignSelf: 'center', marginBottom: spacing.md },
-  error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
-});

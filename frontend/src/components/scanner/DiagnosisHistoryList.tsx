@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { DiagnosisResult } from '../../types';
 import { Card, EmptyState, MarkdownText } from '../ui';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 
 interface DiagnosisHistoryListProps {
   items: DiagnosisResult[];
@@ -19,6 +20,30 @@ function formatDate(iso: string) {
 }
 
 export function DiagnosisHistoryList({ items, onPressItem }: DiagnosisHistoryListProps) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        list: { gap: spacing.sm },
+        item: { padding: spacing.sm },
+        row: { flexDirection: 'row', alignItems: 'center' },
+        thumb: { width: 56, height: 56, borderRadius: 10 },
+        thumbPlaceholder: {
+          backgroundColor: colors.surfaceAlt,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        thumbEmoji: { fontSize: 24 },
+        info: { flex: 1, marginLeft: spacing.md },
+        crop: { ...typography.h3, fontSize: 16, color: colors.text },
+        disease: { ...typography.bodySmall, marginTop: 2, color: colors.text },
+        meta: { ...typography.caption, marginTop: 4, color: colors.textMuted },
+        chevron: { fontSize: 22, color: colors.textMuted, marginLeft: spacing.sm },
+      }),
+    [colors, typography],
+  );
+
   if (items.length === 0) {
     return (
       <EmptyState
@@ -59,21 +84,3 @@ export function DiagnosisHistoryList({ items, onPressItem }: DiagnosisHistoryLis
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  list: { gap: spacing.sm },
-  item: { padding: spacing.sm },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  thumb: { width: 56, height: 56, borderRadius: 10 },
-  thumbPlaceholder: {
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  thumbEmoji: { fontSize: 24 },
-  info: { flex: 1, marginLeft: spacing.md },
-  crop: { ...typography.h3, fontSize: 16, color: colors.primaryDark },
-  disease: { ...typography.bodySmall, marginTop: 2 },
-  meta: { ...typography.caption, marginTop: 4 },
-  chevron: { fontSize: 22, color: colors.textMuted, marginLeft: spacing.sm },
-});

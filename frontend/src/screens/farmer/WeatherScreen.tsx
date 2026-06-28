@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   RefreshControl,
   StyleSheet,
@@ -19,7 +19,8 @@ import type { WeatherResponse } from '../../services/api/types';
 import type { FarmField } from '../../types/field';
 import { getWeatherGeocodeQuery } from '../../utils/locationHelpers';
 import { splitPlantingRecommendations } from '../../services/ai/namibiaWeather';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 
 function currentMonth(): string {
   return new Date().toLocaleString(undefined, { month: 'long' });
@@ -34,6 +35,7 @@ function weatherEmoji(icon: string): string {
 
 export function WeatherScreen() {
   const { user } = useAuth();
+  const { colors, typography } = useTheme();
   const { showWarning, showInfo } = useFeedback();
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,39 @@ export function WeatherScreen() {
   const [error, setError] = useState('');
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [selectedField, setSelectedField] = useState<FarmField | null>(null);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        weatherCard: { marginBottom: spacing.lg },
+        weatherMain: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+        weatherEmoji: { fontSize: 56, marginRight: spacing.md },
+        temp: { fontSize: 36, fontWeight: '700', color: colors.text },
+        condition: { ...typography.body, textTransform: 'capitalize', color: colors.textSecondary },
+        statsRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
+        stat: {
+          flex: 1,
+          backgroundColor: colors.surfaceAlt,
+          padding: spacing.md,
+          borderRadius: borderRadius.md,
+        },
+        statLabel: { ...typography.caption, marginBottom: 4, color: colors.textMuted },
+        statValue: { ...typography.bodySmall, fontWeight: '600', color: colors.primary },
+        tipBox: {
+          backgroundColor: colors.surfaceAlt,
+          padding: spacing.md,
+          borderRadius: borderRadius.md,
+          borderLeftWidth: 4,
+          borderLeftColor: colors.primaryLight,
+        },
+        tipLabel: { ...typography.caption, fontWeight: '700', marginBottom: spacing.xs, color: colors.text },
+        tipText: { ...typography.bodySmall, lineHeight: 20, color: colors.text },
+        sectionTitle: { ...typography.h3, marginBottom: spacing.xs, color: colors.text },
+        sectionTitleSpaced: { marginTop: spacing.lg },
+        sectionHint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
+      }),
+    [colors, typography],
+  );
 
   const city = user ? getWeatherGeocodeQuery(user) : undefined;
 
@@ -52,12 +87,13 @@ export function WeatherScreen() {
 
     try {
       const field = selectedFieldId ? await getFarmFieldById(user.id, selectedFieldId) : null;
-      const hasCoords = field?.latitude != null && field?.longitude != null;
+      const fieldHasCoords = field?.latitude != null && field?.longitude != null;
+      const userHasCoords = user.latitude != null && user.longitude != null;
 
       const data = await getWeather(user, {
-        city: hasCoords ? undefined : city,
-        lat: hasCoords ? field!.latitude : undefined,
-        lon: hasCoords ? field!.longitude : undefined,
+        city: fieldHasCoords || userHasCoords ? undefined : city,
+        lat: fieldHasCoords ? field!.latitude : userHasCoords ? user.latitude : undefined,
+        lon: fieldHasCoords ? field!.longitude : userHasCoords ? user.longitude : undefined,
         fieldId: selectedFieldId ?? undefined,
       });
 
@@ -201,32 +237,3 @@ export function WeatherScreen() {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  weatherCard: { marginBottom: spacing.lg },
-  weatherMain: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-  weatherEmoji: { fontSize: 56, marginRight: spacing.md },
-  temp: { fontSize: 36, fontWeight: '700', color: colors.primaryDark },
-  condition: { ...typography.body, textTransform: 'capitalize' },
-  statsRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
-  stat: {
-    flex: 1,
-    backgroundColor: colors.surfaceAlt,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-  },
-  statLabel: { ...typography.caption, marginBottom: 4 },
-  statValue: { ...typography.bodySmall, fontWeight: '600', color: colors.primary },
-  tipBox: {
-    backgroundColor: colors.surfaceAlt,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primaryLight,
-  },
-  tipLabel: { ...typography.caption, fontWeight: '700', marginBottom: spacing.xs },
-  tipText: { ...typography.bodySmall, lineHeight: 20 },
-  sectionTitle: { ...typography.h3, marginBottom: spacing.xs },
-  sectionTitleSpaced: { marginTop: spacing.lg },
-  sectionHint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
-});

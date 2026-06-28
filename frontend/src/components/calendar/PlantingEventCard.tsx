@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { PlantingEvent } from '../../types';
 import { Card } from '../ui/Card';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 
 interface PlantingEventCardProps {
   event: PlantingEvent;
@@ -21,6 +22,60 @@ function formatDate(date: string) {
 }
 
 export function PlantingEventCard({ event, onPress, onDelete, onLogCare }: PlantingEventCardProps) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: { marginBottom: spacing.sm },
+        content: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+        },
+        iconWrap: {
+          width: 40,
+          height: 40,
+          borderRadius: borderRadius.full,
+          backgroundColor: colors.primarySoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        main: { flex: 1, minWidth: 0 },
+        cropName: { ...typography.h3, fontSize: 16, color: colors.text },
+        planted: { ...typography.caption, marginTop: 2, color: colors.textSecondary },
+        field: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+        harvestPill: {
+          alignItems: 'flex-end',
+          paddingHorizontal: spacing.sm,
+        },
+        harvestLabel: { ...typography.caption, fontWeight: '700', color: colors.textMuted },
+        harvestDate: { ...typography.bodySmall, color: colors.primary, fontWeight: '700', marginTop: 2 },
+        deleteBtn: { padding: spacing.xs },
+        careRow: {
+          flexDirection: 'row',
+          gap: spacing.sm,
+          marginTop: spacing.sm,
+          paddingTop: spacing.sm,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        careQuick: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: spacing.sm,
+          paddingVertical: 6,
+          borderRadius: borderRadius.full,
+          backgroundColor: colors.primarySoft,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        careQuickText: { ...typography.caption, fontWeight: '600', color: colors.text },
+      }),
+    [colors, typography],
+  );
+
   return (
     <Card style={styles.card}>
       <Pressable onPress={onPress} style={styles.content}>
@@ -69,49 +124,3 @@ export function PlantingEventCard({ event, onPress, onDelete, onLogCare }: Plant
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { marginBottom: spacing.sm },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  main: { flex: 1, minWidth: 0 },
-  cropName: { ...typography.h3, fontSize: 16, color: colors.primaryDark },
-  planted: { ...typography.caption, marginTop: 2 },
-  field: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  harvestPill: {
-    alignItems: 'flex-end',
-    paddingHorizontal: spacing.sm,
-  },
-  harvestLabel: { ...typography.caption, fontWeight: '700', color: colors.textMuted },
-  harvestDate: { ...typography.bodySmall, color: colors.primary, fontWeight: '700', marginTop: 2 },
-  deleteBtn: { padding: spacing.xs },
-  careRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  careQuick: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primarySoft,
-  },
-  careQuickText: { ...typography.caption, fontWeight: '600', color: colors.primaryDark },
-});

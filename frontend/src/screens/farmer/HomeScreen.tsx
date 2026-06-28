@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -26,7 +26,8 @@ import {
 import type { DiseaseAlert } from '../../types/analytics';
 import type { MaintenanceLog, MaintenanceType, ScheduledCareTask } from '../../types/maintenance';
 import type { PlantingEvent } from '../../types';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 import type { FarmerStackParamList, FarmerTabParamList } from '../../navigation/types';
 
 type Props = CompositeScreenProps<
@@ -36,6 +37,7 @@ type Props = CompositeScreenProps<
 
 export function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
+  const { colors, typography } = useTheme();
   const [summary, setSummary] = useState<FarmerSummary | null>(null);
   const [events, setEvents] = useState<PlantingEvent[]>([]);
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
@@ -44,6 +46,27 @@ export function HomeScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsReady, setNotificationsReady] = useState(false);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        notifyChip: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          alignSelf: 'flex-start',
+          gap: spacing.xs,
+          paddingHorizontal: spacing.sm,
+          paddingVertical: spacing.xs,
+          marginBottom: spacing.md,
+        },
+        notifyChipText: { ...typography.caption, color: colors.textMuted },
+        latestScan: { marginTop: spacing.md, marginBottom: spacing.md },
+        latestLabel: { ...typography.caption, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs, color: colors.textMuted },
+        scanCrop: { ...typography.h3, fontSize: 16, color: colors.primary },
+        scanMeta: { ...typography.caption, marginTop: 4, color: colors.textSecondary },
+      }),
+    [colors, typography],
+  );
 
   const load = useCallback(async (isRefresh = false) => {
     if (!user) return;
@@ -250,20 +273,3 @@ export function HomeScreen({ navigation }: Props) {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  notifyChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  notifyChipText: { ...typography.caption, color: colors.textMuted },
-  latestScan: { marginTop: spacing.md, marginBottom: spacing.md },
-  latestLabel: { ...typography.caption, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs },
-  scanCrop: { ...typography.h3, fontSize: 16, color: colors.primary },
-  scanMeta: { ...typography.caption, marginTop: 4 },
-});

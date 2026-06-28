@@ -13,16 +13,10 @@ import {
 import type { MaintenanceLog } from '../../types/maintenance';
 import { confirmDestructive } from '../../utils/confirmAction';
 import { Card } from '../ui/Card';
-import { colors, spacing, typography, borderRadius, touchTarget } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius, touchTarget } from '../../constants/theme';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-const KIND_COLORS: Record<FarmCalendarEntry['kind'], string> = {
-  plant: colors.primary,
-  harvest: colors.secondaryDark,
-  maintenance: colors.primaryLight,
-  reminder: colors.warning,
-};
 
 interface FarmCalendarDashboardProps {
   events: PlantingEvent[];
@@ -45,11 +39,142 @@ export function FarmCalendarDashboard({
   onDeletePlanting,
   onOpenCalendar,
 }: FarmCalendarDashboardProps) {
+  const { colors, typography } = useTheme();
   const [removingId, setRemovingId] = useState<string | null>(null);
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedKey, setSelectedKey] = useState(dateKeyFromDate(today));
   const [careOpen, setCareOpen] = useState(false);
+
+  const kindColors = useMemo<Record<FarmCalendarEntry['kind'], string>>(
+    () => ({
+      plant: colors.primary,
+      harvest: colors.secondaryDark,
+      maintenance: colors.primaryLight,
+      reminder: colors.warning,
+    }),
+    [colors],
+  );
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: { marginBottom: spacing.lg, padding: spacing.lg },
+        headerRow: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: spacing.md,
+        },
+        title: { ...typography.h3, color: colors.text, fontSize: 20 },
+        addBtn: {
+          width: 32,
+          height: 32,
+          borderRadius: borderRadius.full,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        monthNav: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: spacing.md,
+        },
+        navBtn: {
+          width: 36,
+          height: 36,
+          borderRadius: borderRadius.full,
+          backgroundColor: colors.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        monthLabel: { ...typography.bodySmall, fontWeight: '700', color: colors.text },
+        calendarBox: {
+          backgroundColor: colors.background,
+          borderRadius: borderRadius.lg,
+          padding: spacing.sm,
+          marginBottom: spacing.md,
+        },
+        weekRow: { flexDirection: 'row' },
+        weekday: {
+          flex: 1,
+          textAlign: 'center',
+          ...typography.caption,
+          fontWeight: '700',
+          color: colors.textMuted,
+          marginBottom: spacing.xs,
+        },
+        dayCell: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 6,
+          borderRadius: borderRadius.sm,
+          margin: 2,
+        },
+        daySelected: { backgroundColor: colors.primary },
+        dayNum: { ...typography.caption, fontWeight: '600', color: colors.text },
+        dayNumSelected: { color: colors.white },
+        dayNumToday: { color: colors.primary, fontWeight: '800' },
+        dotRow: { flexDirection: 'row', gap: 2, marginTop: 3, height: 5 },
+        dotSpacer: { height: 8 },
+        dot: { width: 4, height: 4, borderRadius: 2 },
+        agenda: {
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingTop: spacing.md,
+        },
+        agendaDate: { ...typography.bodySmall, fontWeight: '700', marginBottom: spacing.sm, color: colors.text },
+        emptyDay: { ...typography.caption, color: colors.textMuted },
+        agendaRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: spacing.sm,
+          marginBottom: spacing.sm,
+        },
+        kindDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
+        agendaTextWrap: { flex: 1, minWidth: 0 },
+        agendaText: { ...typography.bodySmall, color: colors.text, fontWeight: '600' },
+        agendaSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+        removeBtn: {
+          minWidth: touchTarget,
+          minHeight: touchTarget,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        careToggle: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing.xs,
+          marginTop: spacing.md,
+          paddingVertical: spacing.sm,
+        },
+        careToggleText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
+        careCrop: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: spacing.sm,
+        },
+        careCropName: { ...typography.bodySmall, fontWeight: '600', color: colors.text },
+        careButtons: { flexDirection: 'row', gap: spacing.xs },
+        careBtn: {
+          width: 36,
+          height: 36,
+          borderRadius: borderRadius.full,
+          backgroundColor: colors.primarySoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+      }),
+    [colors, typography],
+  );
 
   const entries = useMemo(
     () => buildFarmCalendarEntries(events, maintenanceLogs, scheduledTasks),
@@ -180,7 +305,7 @@ export function FarmCalendarDashboard({
                       {dayItems.slice(0, 3).map((entry) => (
                         <View
                           key={entry.id}
-                          style={[styles.dot, { backgroundColor: KIND_COLORS[entry.kind] }]}
+                          style={[styles.dot, { backgroundColor: kindColors[entry.kind] }]}
                         />
                       ))}
                     </View>
@@ -208,7 +333,7 @@ export function FarmCalendarDashboard({
         ) : (
           dayEntries.map((entry) => (
             <View key={entry.id} style={styles.agendaRow}>
-              <View style={[styles.kindDot, { backgroundColor: KIND_COLORS[entry.kind] }]} />
+              <View style={[styles.kindDot, { backgroundColor: kindColors[entry.kind] }]} />
               <View style={styles.agendaTextWrap}>
                 <Text style={styles.agendaText}>{entry.title}</Text>
                 {entry.subtitle ? (
@@ -289,115 +414,3 @@ export function FarmCalendarDashboard({
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { marginBottom: spacing.lg, padding: spacing.lg },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  title: { ...typography.h3, color: colors.text, fontSize: 20 },
-  addBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  monthNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  navBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  monthLabel: { ...typography.bodySmall, fontWeight: '700', color: colors.text },
-  calendarBox: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  weekRow: { flexDirection: 'row' },
-  weekday: {
-    flex: 1,
-    textAlign: 'center',
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.textMuted,
-    marginBottom: spacing.xs,
-  },
-  dayCell: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    borderRadius: borderRadius.sm,
-    margin: 2,
-  },
-  daySelected: { backgroundColor: colors.primary },
-  dayNum: { ...typography.caption, fontWeight: '600', color: colors.text },
-  dayNumSelected: { color: colors.white },
-  dayNumToday: { color: colors.primary, fontWeight: '800' },
-  dotRow: { flexDirection: 'row', gap: 2, marginTop: 3, height: 5 },
-  dotSpacer: { height: 8 },
-  dot: { width: 4, height: 4, borderRadius: 2 },
-  agenda: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.md,
-  },
-  agendaDate: { ...typography.bodySmall, fontWeight: '700', marginBottom: spacing.sm },
-  emptyDay: { ...typography.caption, color: colors.textMuted },
-  agendaRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  kindDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
-  agendaTextWrap: { flex: 1, minWidth: 0 },
-  agendaText: { ...typography.bodySmall, color: colors.text, fontWeight: '600' },
-  agendaSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  removeBtn: {
-    minWidth: touchTarget,
-    minHeight: touchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  careToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  careToggleText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
-  careCrop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  careCropName: { ...typography.bodySmall, fontWeight: '600' },
-  careButtons: { flexDirection: 'row', gap: spacing.xs },
-  careBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

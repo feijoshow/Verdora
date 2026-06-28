@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 
 interface CollapsibleSectionProps {
   title: string;
@@ -17,7 +18,31 @@ export function CollapsibleSection({
   defaultOpen = false,
   children,
 }: CollapsibleSectionProps) {
+  const { colors, typography } = useTheme();
   const [open, setOpen] = useState(defaultOpen);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: { marginBottom: spacing.md },
+        header: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: spacing.sm,
+        },
+        headerText: { flex: 1 },
+        title: { ...typography.h3, fontSize: 16, color: colors.text },
+        subtitle: { ...typography.caption, marginTop: 2, color: colors.textMuted },
+        body: {
+          marginTop: spacing.md,
+          paddingTop: spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+      }),
+    [colors, typography],
+  );
 
   return (
     <Card style={styles.card}>
@@ -45,17 +70,3 @@ export function CollapsibleSection({
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { marginBottom: spacing.md },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  headerText: { flex: 1 },
-  title: { ...typography.h3, fontSize: 16, color: colors.primaryDark },
-  subtitle: { ...typography.caption, marginTop: 2 },
-  body: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
-});

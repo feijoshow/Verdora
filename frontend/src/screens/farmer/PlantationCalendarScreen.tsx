@@ -26,12 +26,13 @@ import {
 } from '../../services/notifications/reminderService';
 import type { MaintenanceType } from '../../types/maintenance';
 import type { PlantingEvent } from '../../types';
-import { colors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type CalendarTab = 'plan' | 'mine';
 
 export function PlantationCalendarScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [tab, setTab] = useState<CalendarTab>('plan');
   const [events, setEvents] = useState<PlantingEvent[]>([]);
   const [loading, setLoading] = useState(true);

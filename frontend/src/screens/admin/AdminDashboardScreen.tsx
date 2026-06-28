@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Platform,
@@ -21,16 +21,69 @@ import { KnowledgeGapCard } from '../../components/intelligence/KnowledgeGapCard
 import { PlantingInsightCard } from '../../components/intelligence/PlantingInsightCard';
 import type { AdminDashboardInsights } from '../../types/analytics';
 import type { AdminStackParamList } from '../../navigation/types';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 
 export function AdminDashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AdminStackParamList>>();
   const { logout } = useAuth();
+  const { colors, typography } = useTheme();
   const [tab, setTab] = useState<AdminTab>('overview');
   const [data, setData] = useState<AdminDashboardInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<'json' | 'pdf' | null>(null);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        header: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: spacing.md,
+          marginBottom: spacing.md,
+        },
+        title: { ...typography.h2, color: colors.primary },
+        subtitle: { ...typography.caption, color: colors.textSecondary },
+        logout: { ...typography.bodySmall, color: colors.textSecondary },
+        statGrid: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: spacing.sm,
+          marginBottom: spacing.md,
+        },
+        statBox: {
+          width: '47%',
+          backgroundColor: colors.surface,
+          borderRadius: borderRadius.md,
+          padding: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: 'center',
+        },
+        statValue: { fontSize: 22, fontWeight: '700', color: colors.primary },
+        statLabel: { ...typography.caption, marginTop: 4, textAlign: 'center', color: colors.textMuted },
+        section: { ...typography.h3, marginTop: spacing.md, marginBottom: spacing.sm, color: colors.text },
+        hint: { ...typography.caption, marginBottom: spacing.md, color: colors.textMuted },
+        itemCard: { marginBottom: spacing.sm },
+        itemTitle: { ...typography.h3, fontSize: 15, color: colors.text },
+        itemMeta: { ...typography.caption, marginTop: 4, color: colors.textMuted },
+        tapHint: { ...typography.caption, marginTop: spacing.sm, color: colors.primary, fontWeight: '600' },
+        cardTitle: { ...typography.bodySmall, fontWeight: '700', marginBottom: spacing.xs, color: colors.text },
+        cardBody: { ...typography.bodySmall, lineHeight: 20, color: colors.text },
+        alertCard: { backgroundColor: colors.warningSurface, marginBottom: spacing.md },
+        alertTitle: { ...typography.bodySmall, fontWeight: '700', color: colors.text },
+        alertBody: { ...typography.bodySmall, marginTop: spacing.xs, color: colors.text },
+        link: { ...typography.caption, marginTop: spacing.sm, color: colors.primary, fontWeight: '600' },
+        exportRow: {
+          flexDirection: 'row',
+          gap: spacing.sm,
+          marginBottom: spacing.lg,
+        },
+        exportBtn: { flex: 1 },
+      }),
+    [colors, typography],
+  );
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -387,6 +440,26 @@ export function AdminDashboardScreen() {
 }
 
 function StatBox({ label, value }: { label: string; value: string | number }) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        statBox: {
+          width: '47%',
+          backgroundColor: colors.surface,
+          borderRadius: borderRadius.md,
+          padding: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: 'center',
+        },
+        statValue: { fontSize: 22, fontWeight: '700', color: colors.primary },
+        statLabel: { ...typography.caption, marginTop: 4, textAlign: 'center', color: colors.textMuted },
+      }),
+    [colors, typography],
+  );
+
   return (
     <View style={styles.statBox}>
       <Text style={styles.statValue}>{value}</Text>
@@ -394,50 +467,3 @@ function StatBox({ label, value }: { label: string; value: string | number }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
-  },
-  title: { ...typography.h2, color: colors.primary },
-  subtitle: { ...typography.caption },
-  logout: { ...typography.bodySmall, color: colors.secondaryDark },
-  statGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  statBox: {
-    width: '47%',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  statValue: { fontSize: 22, fontWeight: '700', color: colors.primary },
-  statLabel: { ...typography.caption, marginTop: 4, textAlign: 'center' },
-  section: { ...typography.h3, marginTop: spacing.md, marginBottom: spacing.sm },
-  hint: { ...typography.caption, marginBottom: spacing.md },
-  itemCard: { marginBottom: spacing.sm },
-  itemTitle: { ...typography.h3, fontSize: 15, color: colors.primaryDark },
-  itemMeta: { ...typography.caption, marginTop: 4 },
-  tapHint: { ...typography.caption, marginTop: spacing.sm, color: colors.primary, fontWeight: '600' },
-  cardTitle: { ...typography.bodySmall, fontWeight: '700', marginBottom: spacing.xs },
-  cardBody: { ...typography.bodySmall, lineHeight: 20 },
-  alertCard: { backgroundColor: colors.warningSurface, marginBottom: spacing.md },
-  alertTitle: { ...typography.bodySmall, fontWeight: '700', color: colors.secondaryDark },
-  alertBody: { ...typography.bodySmall, marginTop: spacing.xs },
-  link: { ...typography.caption, marginTop: spacing.sm, color: colors.primary, fontWeight: '600' },
-  exportRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  exportBtn: { flex: 1 },
-});

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -13,7 +13,8 @@ import type { PlantingEvent } from '../../types';
 import type { FarmField } from '../../types/field';
 import { FieldPicker } from '../fields/FieldPicker';
 import { Button, Input } from '../ui';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 
 export interface EventFormValues {
   cropName: string;
@@ -50,7 +51,42 @@ export function EventFormModal({
   onSave,
   saving = false,
 }: EventFormModalProps) {
+  const { colors, typography } = useTheme();
   const [values, setValues] = useState<EventFormValues>(EMPTY);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        overlay: { flex: 1, justifyContent: 'flex-end' },
+        backdrop: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: colors.overlay,
+        },
+        sheetWrap: { maxHeight: '90%', width: '100%' },
+        sheet: {
+          backgroundColor: colors.surface,
+          borderTopLeftRadius: borderRadius.xl,
+          borderTopRightRadius: borderRadius.xl,
+          padding: spacing.md,
+          maxHeight: '100%',
+        },
+        formScroll: { flexShrink: 1 },
+        formContent: { paddingBottom: spacing.sm },
+        handle: {
+          width: 40,
+          height: 4,
+          backgroundColor: colors.border,
+          borderRadius: 2,
+          alignSelf: 'center',
+          marginBottom: spacing.md,
+        },
+        title: { ...typography.h3, color: colors.primary, marginBottom: spacing.md },
+        notesInput: { minHeight: 80, textAlignVertical: 'top' },
+        actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+        btn: { flex: 1 },
+      }),
+    [colors, typography],
+  );
 
   useEffect(() => {
     if (event) {
@@ -153,33 +189,3 @@ export function EventFormModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
-  },
-  sheetWrap: { maxHeight: '90%', width: '100%' },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    padding: spacing.md,
-    maxHeight: '100%',
-  },
-  formScroll: { flexShrink: 1 },
-  formContent: { paddingBottom: spacing.sm },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
-  title: { ...typography.h3, color: colors.primary, marginBottom: spacing.md },
-  notesInput: { minHeight: 80, textAlignVertical: 'top' },
-  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  btn: { flex: 1 },
-});

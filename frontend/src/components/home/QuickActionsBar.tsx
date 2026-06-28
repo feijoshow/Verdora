@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -18,6 +19,35 @@ interface QuickActionsBarProps {
 }
 
 export function QuickActionsBar({ actions }: QuickActionsBarProps) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        scroll: {
+          gap: spacing.sm,
+          paddingBottom: spacing.lg,
+        },
+        chip: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          backgroundColor: colors.surface,
+          borderRadius: borderRadius.full,
+          paddingVertical: spacing.sm + 2,
+          paddingHorizontal: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        label: {
+          ...typography.bodySmall,
+          fontWeight: '600',
+          color: colors.text,
+        },
+      }),
+    [colors, typography],
+  );
+
   return (
     <ScrollView
       horizontal
@@ -34,25 +64,3 @@ export function QuickActionsBar({ actions }: QuickActionsBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: {
-    gap: spacing.sm,
-    paddingBottom: spacing.lg,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.full,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  label: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-    color: colors.text,
-  },
-});

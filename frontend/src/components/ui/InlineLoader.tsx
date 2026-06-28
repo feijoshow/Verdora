@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View, type ViewStyle } from 'react-native';
-import { colors, spacing } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 
 interface InlineLoaderProps {
   size?: 'small' | 'large';
@@ -9,17 +10,23 @@ interface InlineLoaderProps {
 
 /** Centered spinner for section-level loading inside a screen. */
 export function InlineLoader({ size = 'small', style }: InlineLoaderProps) {
+  const { colors } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: spacing.xl,
+        },
+      }),
+    [],
+  );
+
   return (
     <View style={[styles.wrap, style]}>
       <ActivityIndicator size={size} color={colors.primary} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-});

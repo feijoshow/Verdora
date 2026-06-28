@@ -20,6 +20,8 @@ export interface RegisterProfileInput {
   email: string;
   password: string;
   location: VerdoraLocation;
+  latitude?: number;
+  longitude?: number;
   farmSize?: string;
   farmerType?: FarmerType;
   dataConsent: boolean;
@@ -89,6 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: profile.email,
         password: profile.password,
         location: profile.location,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
         farmSize: profile.farmSize,
         farmerType: profile.farmerType,
         dataConsent: profile.dataConsent,

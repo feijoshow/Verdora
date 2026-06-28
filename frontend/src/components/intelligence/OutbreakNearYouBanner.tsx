@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { DiseaseAlert } from '../../types/analytics';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 
 const SEVERITY_COLORS: Record<DiseaseAlert['severity'], string> = {
   low: '#FFF8E7',
@@ -24,6 +25,30 @@ interface OutbreakNearYouBannerProps {
 
 /** Privacy-safe aggregated outbreak warning for farmers */
 export function OutbreakNearYouBanner({ alerts, onPress }: OutbreakNearYouBannerProps) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        banner: {
+          borderRadius: borderRadius.md,
+          padding: spacing.md,
+          marginBottom: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.warning,
+        },
+        header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+        emoji: { fontSize: 22, marginRight: spacing.sm },
+        headerText: { flex: 1 },
+        title: { ...typography.bodySmall, fontWeight: '700', color: colors.text },
+        severity: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+        message: { ...typography.bodySmall, lineHeight: 20, color: colors.text },
+        hint: { ...typography.caption, marginTop: spacing.sm, fontStyle: 'italic', color: colors.textMuted },
+        more: { ...typography.caption, marginTop: spacing.xs, fontWeight: '600', color: colors.primary },
+      }),
+    [colors, typography],
+  );
+
   if (alerts.length === 0) return null;
 
   const top = alerts[0];
@@ -53,21 +78,3 @@ export function OutbreakNearYouBanner({ alerts, onPress }: OutbreakNearYouBanner
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.warning,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-  emoji: { fontSize: 22, marginRight: spacing.sm },
-  headerText: { flex: 1 },
-  title: { ...typography.bodySmall, fontWeight: '700', color: colors.secondaryDark },
-  severity: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  message: { ...typography.bodySmall, lineHeight: 20, color: colors.text },
-  hint: { ...typography.caption, marginTop: spacing.sm, fontStyle: 'italic', color: colors.textMuted },
-  more: { ...typography.caption, marginTop: spacing.xs, fontWeight: '600', color: colors.primary },
-});

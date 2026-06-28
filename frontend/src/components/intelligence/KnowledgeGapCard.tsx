@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { Card } from '../ui';
 import type { KnowledgeGapReport } from '../../types/analytics';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 
 interface KnowledgeGapCardProps {
   report: KnowledgeGapReport;
@@ -10,6 +11,21 @@ interface KnowledgeGapCardProps {
 
 /** NGO / extension knowledge gap report card */
 export function KnowledgeGapCard({ report }: KnowledgeGapCardProps) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: { marginBottom: spacing.sm },
+        title: { ...typography.h3, fontSize: 15, color: colors.text },
+        region: { ...typography.caption, marginTop: 4, fontWeight: '600', color: colors.textSecondary },
+        count: { ...typography.caption, marginTop: spacing.xs, color: colors.textMuted },
+        sample: { ...typography.bodySmall, marginTop: spacing.sm, fontStyle: 'italic', lineHeight: 20, color: colors.text },
+        hint: { ...typography.caption, marginTop: spacing.sm, color: colors.primary, fontWeight: '600' },
+      }),
+    [colors, typography],
+  );
+
   const priorityColor =
     report.priority === 'high'
       ? colors.error
@@ -36,12 +52,3 @@ export function KnowledgeGapCard({ report }: KnowledgeGapCardProps) {
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { marginBottom: spacing.sm },
-  title: { ...typography.h3, fontSize: 15, color: colors.primaryDark },
-  region: { ...typography.caption, marginTop: 4, fontWeight: '600' },
-  count: { ...typography.caption, marginTop: spacing.xs },
-  sample: { ...typography.bodySmall, marginTop: spacing.sm, fontStyle: 'italic', lineHeight: 20 },
-  hint: { ...typography.caption, marginTop: spacing.sm, color: colors.primary, fontWeight: '600' },
-});

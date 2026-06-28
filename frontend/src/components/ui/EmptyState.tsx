@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 import { Button } from './Button';
 import { Card } from './Card';
 
@@ -13,12 +14,10 @@ interface EmptyStateProps {
   title?: string;
   message: string;
   action?: EmptyStateAction;
-  /** default = highlight card; muted = plain card; error = error styling */
   variant?: 'default' | 'muted' | 'error';
   style?: ViewStyle;
 }
 
-/** Consistent empty, hint, and error presentation. */
 export function EmptyState({
   title,
   message,
@@ -26,6 +25,27 @@ export function EmptyState({
   variant = 'default',
   style,
 }: EmptyStateProps) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { alignItems: 'center', gap: spacing.sm },
+        title: { ...typography.h3, fontSize: 16, color: colors.primary, textAlign: 'center' },
+        message: { ...typography.bodySmall, textAlign: 'center', lineHeight: 20, color: colors.textSecondary },
+        mutedMessage: {
+          ...typography.bodySmall,
+          textAlign: 'center',
+          fontStyle: 'italic',
+          lineHeight: 20,
+          color: colors.textMuted,
+        },
+        errorMessage: { ...typography.bodySmall, textAlign: 'center', color: colors.error, lineHeight: 20 },
+        action: { marginTop: spacing.xs, alignSelf: 'stretch' },
+      }),
+    [colors, typography],
+  );
+
   const cardVariant = variant === 'muted' ? 'default' : 'highlight';
   const messageStyle =
     variant === 'error'
@@ -46,12 +66,3 @@ export function EmptyState({
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  content: { alignItems: 'center', gap: spacing.sm },
-  title: { ...typography.h3, fontSize: 16, color: colors.primary, textAlign: 'center' },
-  message: { ...typography.bodySmall, textAlign: 'center', lineHeight: 20 },
-  mutedMessage: { ...typography.bodySmall, textAlign: 'center', fontStyle: 'italic', lineHeight: 20 },
-  errorMessage: { ...typography.bodySmall, textAlign: 'center', color: colors.error, lineHeight: 20 },
-  action: { marginTop: spacing.xs, alignSelf: 'stretch' },
-});

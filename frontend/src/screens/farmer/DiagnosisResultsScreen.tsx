@@ -1,16 +1,62 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
 import { Button, Card, EmptyState, MarkdownText, ScreenWrapper } from '../../components/ui';
 import { ConfidenceBar } from '../../components/scanner/ConfidenceBar';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 import type { FarmerStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<FarmerStackParamList, 'DiagnosisResults'>;
 
 export function DiagnosisResultsScreen({ navigation, route }: Props) {
+  const { colors, typography } = useTheme();
   const result = route.params?.result;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        image: {
+          width: '100%',
+          height: 220,
+          borderRadius: borderRadius.lg,
+          marginBottom: spacing.md,
+        },
+        imagePlaceholder: {
+          backgroundColor: colors.surfaceAlt,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        placeholderEmoji: { fontSize: 64 },
+        resultCard: { marginBottom: spacing.lg },
+        badgeRow: { marginBottom: spacing.md },
+        badge: {
+          alignSelf: 'flex-start',
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.xs,
+          borderRadius: borderRadius.full,
+        },
+        badgeHealthy: { backgroundColor: colors.surfaceAlt },
+        badgeDisease: { backgroundColor: colors.errorSurface },
+        badgeText: { ...typography.caption, fontWeight: '700', color: colors.text },
+        label: {
+          ...typography.caption,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+          marginTop: spacing.sm,
+          marginBottom: spacing.xs,
+          color: colors.textMuted,
+        },
+        cropName: { ...typography.h1, fontSize: 26, color: colors.text },
+        fieldName: { ...typography.body, color: colors.primary, marginBottom: spacing.sm },
+        disease: { ...typography.body, fontWeight: '600', color: colors.error },
+        healthyText: { color: colors.success },
+        treatment: { ...typography.bodySmall, lineHeight: 22, color: colors.text },
+        timestamp: { ...typography.caption, marginTop: spacing.lg, color: colors.textMuted },
+      }),
+    [colors, typography],
+  );
 
   if (!result) {
     return (
@@ -78,42 +124,3 @@ export function DiagnosisResultsScreen({ navigation, route }: Props) {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  image: {
-    width: '100%',
-    height: 220,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-  },
-  imagePlaceholder: {
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeholderEmoji: { fontSize: 64 },
-  resultCard: { marginBottom: spacing.lg },
-  badgeRow: { marginBottom: spacing.md },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-  },
-  badgeHealthy: { backgroundColor: colors.surfaceAlt },
-  badgeDisease: { backgroundColor: colors.errorSurface },
-  badgeText: { ...typography.caption, fontWeight: '700', color: colors.primaryDark },
-  label: {
-    ...typography.caption,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  cropName: { ...typography.h1, fontSize: 26, color: colors.primaryDark },
-  fieldName: { ...typography.body, color: colors.primary, marginBottom: spacing.sm },
-  disease: { ...typography.body, fontWeight: '600', color: colors.error },
-  healthyText: { color: colors.success },
-  treatment: { ...typography.bodySmall, lineHeight: 22 },
-  timestamp: { ...typography.caption, marginTop: spacing.lg },
-});

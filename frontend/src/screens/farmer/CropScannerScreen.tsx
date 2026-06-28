@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -26,7 +26,8 @@ import { toApiError } from '../../services/api/errors';
 import { FieldPicker } from '../../components/fields/FieldPicker';
 import type { FarmField } from '../../types/field';
 import { setLastSelectedFieldId } from '../../services/fields/fieldService';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 import type { FarmerStackParamList, FarmerTabParamList } from '../../navigation/types';
 
 type Props = CompositeScreenProps<
@@ -42,6 +43,7 @@ const SCAN_STAGES = [
 ];
 
 export function CropScannerScreen({ navigation }: Props) {
+  const { colors, typography } = useTheme();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
@@ -54,6 +56,67 @@ export function CropScannerScreen({ navigation }: Props) {
   const { user } = useAuth();
   const { history, addDiagnosis } = useDiagnosis();
   const { showWarning, showInfo } = useFeedback();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        title: { ...typography.h2, color: colors.primary },
+        subtitle: { ...typography.bodySmall, marginTop: spacing.xs, color: colors.textSecondary },
+        cameraContainer: {
+          height: Platform.OS === 'web' ? 260 : 300,
+          marginHorizontal: spacing.md,
+          borderRadius: borderRadius.lg,
+          overflow: 'hidden',
+          backgroundColor: colors.primaryDark,
+        },
+        camera: { flex: 1 },
+        frameOverlay: {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.scrimLight,
+        },
+        frame: {
+          width: '75%',
+          height: '55%',
+          borderWidth: 2,
+          borderColor: colors.primaryLight,
+          borderRadius: borderRadius.md,
+          borderStyle: 'dashed',
+        },
+        previewWrap: { flex: 1, position: 'relative' },
+        preview: { width: '100%', height: '100%', resizeMode: 'cover' },
+        analyzingOverlay: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: colors.overlay,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        analyzingText: { ...typography.body, color: colors.white, marginTop: spacing.md },
+        actions: { paddingHorizontal: spacing.md, marginTop: spacing.md, gap: spacing.sm },
+        fieldPicker: { paddingHorizontal: spacing.md, marginTop: spacing.xs },
+        historySection: { paddingHorizontal: spacing.md, marginTop: spacing.md, marginBottom: spacing.lg },
+        historyToggle: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingVertical: spacing.sm,
+          marginBottom: spacing.sm,
+        },
+        historyToggleText: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary },
+        divider: { height: spacing.md },
+        webPlaceholder: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.primaryDark,
+          padding: spacing.lg,
+        },
+        webEmoji: { fontSize: 48, marginBottom: spacing.md },
+        webHint: { ...typography.bodySmall, color: colors.white, textAlign: 'center' },
+      }),
+    [colors, typography],
+  );
 
   useEffect(() => {
     if (!isAnalyzing) {
@@ -279,60 +342,3 @@ export function CropScannerScreen({ navigation }: Props) {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  title: { ...typography.h2, color: colors.primary },
-  subtitle: { ...typography.bodySmall, marginTop: spacing.xs },
-  cameraContainer: {
-    height: Platform.OS === 'web' ? 260 : 300,
-    marginHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    backgroundColor: colors.primaryDark,
-  },
-  camera: { flex: 1 },
-  frameOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.scrimLight,
-  },
-  frame: {
-    width: '75%',
-    height: '55%',
-    borderWidth: 2,
-    borderColor: colors.primaryLight,
-    borderRadius: borderRadius.md,
-    borderStyle: 'dashed',
-  },
-  previewWrap: { flex: 1, position: 'relative' },
-  preview: { width: '100%', height: '100%', resizeMode: 'cover' },
-  analyzingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  analyzingText: { ...typography.body, color: colors.white, marginTop: spacing.md },
-  actions: { paddingHorizontal: spacing.md, marginTop: spacing.md, gap: spacing.sm },
-  fieldPicker: { paddingHorizontal: spacing.md, marginTop: spacing.xs },
-  historySection: { paddingHorizontal: spacing.md, marginTop: spacing.md, marginBottom: spacing.lg },
-  historyToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  historyToggleText: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary },
-  divider: { height: spacing.md },
-  webPlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryDark,
-    padding: spacing.lg,
-  },
-  webEmoji: { fontSize: 48, marginBottom: spacing.md },
-  webHint: { ...typography.bodySmall, color: colors.white, textAlign: 'center' },
-});

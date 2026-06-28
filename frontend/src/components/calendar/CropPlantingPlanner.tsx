@@ -25,7 +25,8 @@ import {
   saveCustomPlantingGuide,
 } from '../../services/calendar/customPlantingGuideService';
 import type { CropPlantingGuide } from '../../data/cropPlantingGuide';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 import { toApiError } from '../../services/api/errors';
 
 export interface PlannerSavePayload {
@@ -54,6 +55,7 @@ export function CropPlantingPlanner({
   onSave,
   saving = false,
 }: CropPlantingPlannerProps) {
+  const { colors, typography } = useTheme();
   const [query, setQuery] = useState('');
   const [selectedGuide, setSelectedGuide] = useState<CropPlantingGuide | null>(null);
   const [customGuides, setCustomGuides] = useState<CropPlantingGuide[]>([]);
@@ -93,6 +95,99 @@ export function CropPlantingPlanner({
 
   const activeGuide = selectedGuide ?? findPlantingGuide(query, customGuides);
   const summary = activeGuide ? buildPlantingSummary(activeGuide, plantDate) : null;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: { marginBottom: spacing.lg },
+        cropRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+        cropChip: {
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          borderRadius: borderRadius.full,
+          backgroundColor: colors.background,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        cropChipActive: { backgroundColor: colors.surfaceAlt, borderColor: colors.primary },
+        cropChipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
+        cropChipTextActive: { color: colors.primary, fontWeight: '700' },
+        suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+        suggestionChip: {
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          backgroundColor: colors.primarySoft,
+          borderRadius: borderRadius.full,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        suggestionText: { ...typography.caption, color: colors.text, fontWeight: '600' },
+        hint: { ...typography.caption, textAlign: 'center', marginTop: spacing.sm, color: colors.textMuted },
+        guideBox: { marginTop: spacing.sm },
+        summaryCard: {
+          backgroundColor: colors.primarySoft,
+          borderRadius: borderRadius.md,
+          padding: spacing.md,
+          marginBottom: spacing.sm,
+        },
+        summaryTop: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: spacing.sm,
+          marginBottom: spacing.sm,
+        },
+        guideHeading: { ...typography.h3, fontSize: 18, color: colors.text, flex: 1 },
+        summaryLine: { ...typography.bodySmall, lineHeight: 20, marginTop: 2, color: colors.text },
+        badge: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.sm },
+        badgeGood: { backgroundColor: colors.surfaceAlt },
+        badgeWait: { backgroundColor: colors.warningSurface },
+        badgeText: { ...typography.caption, fontWeight: '700', color: colors.text },
+        detailsToggle: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing.xs,
+          paddingVertical: spacing.sm,
+          marginBottom: spacing.sm,
+        },
+        detailsToggleText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
+        detailsBox: {
+          backgroundColor: colors.background,
+          borderRadius: borderRadius.md,
+          padding: spacing.md,
+          marginBottom: spacing.md,
+        },
+        guideRow: { marginBottom: spacing.sm },
+        guideLabel: { ...typography.caption, fontWeight: '700', color: colors.textMuted },
+        guideValue: { ...typography.bodySmall, lineHeight: 20, marginTop: 2, color: colors.text },
+        dateRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginBottom: spacing.sm },
+        dateInput: { flex: 1 },
+        todayBtn: {
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.md,
+          borderRadius: borderRadius.md,
+          borderWidth: 1,
+          borderColor: colors.primary,
+          marginBottom: spacing.xs,
+          backgroundColor: colors.surface,
+        },
+        todayBtnText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
+        harvestBanner: {
+          backgroundColor: colors.surfaceAlt,
+          padding: spacing.md,
+          borderRadius: borderRadius.md,
+          marginBottom: spacing.md,
+          borderLeftWidth: 4,
+          borderLeftColor: colors.primary,
+        },
+        harvestLabel: { ...typography.caption, fontWeight: '700', color: colors.textSecondary },
+        harvestValue: { ...typography.h3, color: colors.text, marginTop: 4 },
+        noGuide: { marginTop: spacing.md, gap: spacing.sm },
+        noGuideText: { ...typography.bodySmall, lineHeight: 20, textAlign: 'center', color: colors.text },
+      }),
+    [colors, typography],
+  );
 
   const selectCrop = (guide: CropPlantingGuide) => {
     setSelectedGuide(guide);
@@ -306,6 +401,18 @@ export function CropPlantingPlanner({
 }
 
 function GuideRow({ label, value }: { label: string; value: string }) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        guideRow: { marginBottom: spacing.sm },
+        guideLabel: { ...typography.caption, fontWeight: '700', color: colors.textMuted },
+        guideValue: { ...typography.bodySmall, lineHeight: 20, marginTop: 2, color: colors.text },
+      }),
+    [colors, typography],
+  );
+
   return (
     <View style={styles.guideRow}>
       <Text style={styles.guideLabel}>{label}</Text>
@@ -313,89 +420,3 @@ function GuideRow({ label, value }: { label: string; value: string }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { marginBottom: spacing.lg },
-  cropRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
-  cropChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cropChipActive: { backgroundColor: colors.surfaceAlt, borderColor: colors.primary },
-  cropChipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
-  cropChipTextActive: { color: colors.primary, fontWeight: '700' },
-  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  suggestionChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primarySoft,
-    borderRadius: borderRadius.full,
-  },
-  suggestionText: { ...typography.caption, color: colors.primaryDark, fontWeight: '600' },
-  hint: { ...typography.caption, textAlign: 'center', marginTop: spacing.sm },
-  guideBox: { marginTop: spacing.sm },
-  summaryCard: {
-    backgroundColor: colors.primarySoft,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  summaryTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  guideHeading: { ...typography.h3, fontSize: 18, color: colors.primaryDark, flex: 1 },
-  summaryLine: { ...typography.bodySmall, lineHeight: 20, marginTop: 2 },
-  badge: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.sm },
-  badgeGood: { backgroundColor: colors.surfaceAlt },
-  badgeWait: { backgroundColor: colors.warningSurface },
-  badgeText: { ...typography.caption, fontWeight: '700', color: colors.primaryDark },
-  detailsToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  detailsToggleText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
-  detailsBox: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  guideRow: { marginBottom: spacing.sm },
-  guideLabel: { ...typography.caption, fontWeight: '700', color: colors.textMuted },
-  guideValue: { ...typography.bodySmall, lineHeight: 20, marginTop: 2 },
-  dateRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginBottom: spacing.sm },
-  dateInput: { flex: 1 },
-  todayBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  todayBtnText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
-  harvestBanner: {
-    backgroundColor: colors.surfaceAlt,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-  },
-  harvestLabel: { ...typography.caption, fontWeight: '700' },
-  harvestValue: { ...typography.h3, color: colors.primaryDark, marginTop: 4 },
-  noGuide: { marginTop: spacing.md, gap: spacing.sm },
-  noGuideText: { ...typography.bodySmall, lineHeight: 20, textAlign: 'center' },
-});

@@ -31,6 +31,8 @@ export interface RegisterRequest {
   email: string;
   password: string;
   location: VerdoraLocation;
+  latitude?: number;
+  longitude?: number;
   farmSize?: string;
   farmerType?: 'small-scale' | 'commercial';
   dataConsent: boolean;

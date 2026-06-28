@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
@@ -11,16 +11,35 @@ import { ScreenHeader } from '../../components/navigation/ScreenHeader';
 import { ScreenWrapper, Card, Input, EmptyState, InlineLoader } from '../../components/ui';
 import { listCrops, searchCrops } from '../../services/api/cropLibraryService';
 import type { CropEntry } from '../../services/api/cropLibraryService';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 import type { FarmerStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<FarmerStackParamList, 'CropLibrary'>;
 
 export function CropLibraryScreen({ navigation }: Props) {
+  const { colors, typography } = useTheme();
   const [items, setItems] = useState<CropEntry[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        list: { flex: 1 },
+        listContent: {
+          paddingHorizontal: spacing.md,
+          paddingBottom: spacing.lg,
+          flexGrow: 1,
+        },
+        header: { paddingTop: spacing.sm },
+        card: { marginVertical: spacing.xs },
+        title: { ...typography.h3, color: colors.text },
+        meta: { ...typography.caption, marginTop: spacing.xs, color: colors.textMuted },
+      }),
+    [colors, typography],
+  );
 
   const load = useCallback(async (q = '') => {
     setLoading(true);
@@ -98,16 +117,3 @@ export function CropLibraryScreen({ navigation }: Props) {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  list: { flex: 1 },
-  listContent: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.lg,
-    flexGrow: 1,
-  },
-  header: { paddingTop: spacing.sm },
-  card: { marginVertical: spacing.xs },
-  title: { ...typography.h3, color: colors.primaryDark },
-  meta: { ...typography.caption, marginTop: spacing.xs },
-});

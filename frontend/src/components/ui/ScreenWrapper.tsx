@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,20 +9,19 @@ import {
   type ViewProps,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabBarOptional } from '../../context/TabBarContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useScrollBottomPadding } from '../../hooks/useScrollBottomPadding';
-import { colors, spacing } from '../../constants/theme';
+import { spacing } from '../../constants/theme';
 
 interface ScreenWrapperProps extends ViewProps {
   scrollable?: boolean;
   padded?: boolean;
   refreshControl?: React.ReactElement<RefreshControlProps>;
-  /** Lift content when the software keyboard opens */
   keyboardAvoiding?: boolean;
-  /** Center content vertically when it fits (login/register) */
   centerContent?: boolean;
 }
 
-/** Consistent safe-area layout for all screens */
 export function ScreenWrapper({
   children,
   scrollable = true,
@@ -34,8 +33,21 @@ export function ScreenWrapper({
   ...rest
 }: ScreenWrapperProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const tabBar = useTabBarOptional();
   const scrollBottomPadding = useScrollBottomPadding();
   const bottomPad = scrollBottomPadding + spacing.lg;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: colors.background },
+        flex: { flex: 1, backgroundColor: colors.background },
+        padded: { paddingHorizontal: spacing.md },
+        centerContent: { flexGrow: 1, justifyContent: 'center' },
+      }),
+    [colors.background],
+  );
 
   const contentStyle = [
     padded && styles.padded,
@@ -52,6 +64,8 @@ export function ScreenWrapper({
       showsVerticalScrollIndicator={false}
       refreshControl={refreshControl}
       nestedScrollEnabled
+      onScroll={tabBar?.onContentScroll}
+      scrollEventThrottle={16}
     >
       {children}
     </ScrollView>
@@ -83,10 +97,3 @@ export function ScreenWrapper({
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  padded: { paddingHorizontal: spacing.md },
-  centerContent: { flexGrow: 1, justifyContent: 'center' },
-});

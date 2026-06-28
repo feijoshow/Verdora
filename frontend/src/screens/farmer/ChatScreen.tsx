@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -28,7 +28,10 @@ import { buildQuickPrompts } from '../../services/ai/chatPrompts';
 import { getFarmerSummary } from '../../services/data/farmerDataService';
 import { toApiError } from '../../services/api/errors';
 import type { ChatMessage } from '../../types';
-import { colors, spacing, typography, borderRadius, touchTarget } from '../../constants/theme';
+import { useTabBarOptional } from '../../context/TabBarContext';
+import { useScrollBottomPadding } from '../../hooks/useScrollBottomPadding';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius, touchTarget } from '../../constants/theme';
 
 function welcomeMessage(crops: string[]): ChatMessage {
   const cropHint =
@@ -45,14 +48,100 @@ function welcomeMessage(crops: string[]): ChatMessage {
 
 export function ChatScreen() {
   const { user } = useAuth();
+  const { colors, typography } = useTheme();
   const { showWarning } = useFeedback();
   const insets = useSafeAreaInsets();
+  const tabBar = useTabBarOptional();
+  const scrollBottomPadding = useScrollBottomPadding();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompts, setPrompts] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: colors.background },
+        body: { flex: 1 },
+        headerWrap: {
+          paddingHorizontal: spacing.md,
+        },
+        list: { flex: 1, backgroundColor: colors.background },
+        listContent: { padding: spacing.md, paddingBottom: spacing.sm, flexGrow: 1 },
+        typing: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: spacing.md,
+          paddingBottom: spacing.sm,
+          gap: spacing.sm,
+        },
+        typingText: { ...typography.caption, color: colors.textMuted },
+        promptsWrap: {
+          paddingTop: spacing.xs,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+          backgroundColor: colors.background,
+        },
+        promptsLabel: {
+          ...typography.caption,
+          fontWeight: '600',
+          color: colors.textMuted,
+          paddingHorizontal: spacing.md,
+          marginBottom: spacing.xs,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        },
+        prompts: {
+          flexDirection: 'row',
+          paddingHorizontal: spacing.md,
+          gap: spacing.sm,
+          paddingBottom: spacing.sm,
+        },
+        promptChip: {
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          borderRadius: borderRadius.full,
+          borderWidth: 1,
+          borderColor: colors.primaryLight,
+          backgroundColor: colors.primarySoft,
+        },
+        promptText: { ...typography.caption, color: colors.text, fontWeight: '600' },
+        inputRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          padding: spacing.md,
+          paddingTop: spacing.sm,
+          backgroundColor: colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        input: {
+          flex: 1,
+          maxHeight: 100,
+          backgroundColor: colors.background,
+          borderRadius: borderRadius.lg,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm + 2,
+          fontSize: 16,
+          color: colors.text,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        sendBtn: {
+          width: touchTarget,
+          height: touchTarget,
+          borderRadius: touchTarget / 2,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginLeft: spacing.sm,
+        },
+        sendDisabled: { opacity: 0.4 },
+      }),
+    [colors, typography],
+  );
 
   useEffect(() => {
     (async () => {
@@ -156,6 +245,8 @@ export function ChatScreen() {
           renderItem={({ item }) => <ChatBubble message={item} />}
           contentContainerStyle={styles.listContent}
           onContentSizeChange={scrollToEnd}
+          onScroll={tabBar?.onContentScroll}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         />
@@ -193,7 +284,7 @@ export function ChatScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 56 : 0}
         >
-          <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+          <View style={[styles.inputRow, { paddingBottom: scrollBottomPadding }]}>
             <TextInput
               style={styles.input}
               value={input}
@@ -217,82 +308,3 @@ export function ChatScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  body: { flex: 1 },
-  headerWrap: {
-    paddingHorizontal: spacing.md,
-  },
-  list: { flex: 1, backgroundColor: colors.background },
-  listContent: { padding: spacing.md, paddingBottom: spacing.sm, flexGrow: 1 },
-  typing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
-  },
-  typingText: { ...typography.caption },
-  promptsWrap: {
-    paddingTop: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  promptsLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.textMuted,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  prompts: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  promptChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    backgroundColor: colors.primarySoft,
-  },
-  promptText: { ...typography.caption, color: colors.primaryDark, fontWeight: '600' },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: spacing.md,
-    paddingTop: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  input: {
-    flex: 1,
-    maxHeight: 100,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: 16,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sendBtn: {
-    width: touchTarget,
-    height: touchTarget,
-    borderRadius: touchTarget / 2,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: spacing.sm,
-  },
-  sendDisabled: { opacity: 0.4 },
-});

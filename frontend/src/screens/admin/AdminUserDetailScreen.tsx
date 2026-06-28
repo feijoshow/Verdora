@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -16,18 +16,54 @@ import { exportFarmerReport } from '../../services/api/adminService';
 import { getUserActivityProfile } from '../../services/admin/userActivityService';
 import { toApiError } from '../../services/api/errors';
 import type { UserActivityProfile } from '../../types/analytics';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 import type { AdminStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AdminStackParamList, 'UserDetail'>;
 
 export function AdminUserDetailScreen({ route }: Props) {
   const { userId } = route.params;
+  const { colors, typography } = useTheme();
   const [profile, setProfile] = useState<UserActivityProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<'json' | 'pdf' | null>(null);
   const [error, setError] = useState('');
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        consentCard: { marginBottom: spacing.md },
+        consentTitle: { ...typography.bodySmall, fontWeight: '700', marginBottom: spacing.xs, color: colors.text },
+        consentBody: { ...typography.caption, lineHeight: 18, color: colors.textSecondary },
+        statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+        sectionTitle: { ...typography.h3, marginBottom: spacing.sm, color: colors.text },
+        exportRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+        exportBtn: { flex: 1 },
+        itemCard: { marginBottom: spacing.sm },
+        itemTitle: { ...typography.h3, fontSize: 15, color: colors.text },
+        itemMeta: { ...typography.caption, marginTop: 4, color: colors.textMuted },
+        itemBody: { ...typography.bodySmall, marginTop: spacing.sm, lineHeight: 20, color: colors.text },
+        scanImage: {
+          width: '100%',
+          height: 140,
+          borderRadius: borderRadius.md,
+          marginBottom: spacing.sm,
+        },
+        chatLabel: {
+          ...typography.caption,
+          fontWeight: '700',
+          textTransform: 'uppercase',
+          letterSpacing: 0.4,
+          marginTop: spacing.xs,
+          color: colors.textMuted,
+        },
+        chatQuestion: { ...typography.bodySmall, fontWeight: '600', marginTop: 4, lineHeight: 20, color: colors.text },
+        chatAnswer: { ...typography.bodySmall, marginTop: 4, lineHeight: 20, color: colors.textSecondary },
+      }),
+    [colors, typography],
+  );
 
   const load = useCallback(
     async (isRefresh = false) => {
@@ -236,6 +272,17 @@ export function AdminUserDetailScreen({ route }: Props) {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        section: { marginBottom: spacing.md },
+        sectionTitle: { ...typography.h3, marginBottom: spacing.sm, color: colors.text },
+      }),
+    [colors, typography],
+  );
+
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -245,6 +292,26 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function StatPill({ label, value }: { label: string; value: number }) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        pill: {
+          width: '47%',
+          backgroundColor: colors.surface,
+          borderRadius: borderRadius.md,
+          padding: spacing.sm,
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        pillValue: { fontSize: 20, fontWeight: '700', color: colors.primary },
+        pillLabel: { ...typography.caption, color: colors.textMuted },
+      }),
+    [colors, typography],
+  );
+
   return (
     <View style={styles.pill}>
       <Text style={styles.pillValue}>{value}</Text>
@@ -254,6 +321,17 @@ function StatPill({ label, value }: { label: string; value: number }) {
 }
 
 function Meta({ label, value }: { label: string; value: string }) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        metaRow: { ...typography.bodySmall, marginBottom: spacing.xs, color: colors.text },
+        metaLabel: { fontWeight: '700', color: colors.text },
+      }),
+    [colors, typography],
+  );
+
   return (
     <Text style={styles.metaRow}>
       <Text style={styles.metaLabel}>{label}: </Text>
@@ -261,46 +339,3 @@ function Meta({ label, value }: { label: string; value: string }) {
     </Text>
   );
 }
-
-const styles = StyleSheet.create({
-  consentCard: { marginBottom: spacing.md },
-  consentTitle: { ...typography.bodySmall, fontWeight: '700', marginBottom: spacing.xs },
-  consentBody: { ...typography.caption, lineHeight: 18 },
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  exportRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
-  exportBtn: { flex: 1 },
-  pill: {
-    width: '47%',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pillValue: { fontSize: 20, fontWeight: '700', color: colors.primary },
-  pillLabel: { ...typography.caption },
-  section: { marginBottom: spacing.md },
-  sectionTitle: { ...typography.h3, marginBottom: spacing.sm },
-  itemCard: { marginBottom: spacing.sm },
-  itemTitle: { ...typography.h3, fontSize: 15, color: colors.primaryDark },
-  itemMeta: { ...typography.caption, marginTop: 4 },
-  itemBody: { ...typography.bodySmall, marginTop: spacing.sm, lineHeight: 20 },
-  scanImage: {
-    width: '100%',
-    height: 140,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-  },
-  chatLabel: {
-    ...typography.caption,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginTop: spacing.xs,
-  },
-  chatQuestion: { ...typography.bodySmall, fontWeight: '600', marginTop: 4, lineHeight: 20 },
-  chatAnswer: { ...typography.bodySmall, marginTop: 4, lineHeight: 20, color: colors.textSecondary },
-  metaRow: { ...typography.bodySmall, marginBottom: spacing.xs },
-  metaLabel: { fontWeight: '700', color: colors.primaryDark },
-});

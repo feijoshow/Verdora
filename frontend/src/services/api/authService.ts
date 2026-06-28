@@ -33,7 +33,12 @@ function buildUserFromRegister(payload: RegisterRequest, id: string): User {
     dataConsentAt: payload.dataConsent ? new Date().toISOString() : undefined,
     createdAt: new Date().toISOString(),
   };
-  return { ...base, ...applyVerdoraLocation(payload.location) };
+  return {
+    ...base,
+    ...applyVerdoraLocation(payload.location),
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+  };
 }
 
 async function supabaseLogin({ email, password }: LoginRequest): Promise<LoginResponse> {

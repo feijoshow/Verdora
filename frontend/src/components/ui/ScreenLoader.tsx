@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 import { ScreenWrapper } from './ScreenWrapper';
 
 interface ScreenLoaderProps {
@@ -12,6 +13,22 @@ interface ScreenLoaderProps {
 
 /** Full-screen centered loading state with optional header. */
 export function ScreenLoader({ header, size = 'large', label }: ScreenLoaderProps) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        center: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingBottom: spacing.xxl,
+        },
+        label: { ...typography.caption, marginTop: spacing.sm, color: colors.textMuted },
+      }),
+    [colors, typography],
+  );
+
   return (
     <ScreenWrapper scrollable={false}>
       {header}
@@ -22,13 +39,3 @@ export function ScreenLoader({ header, size = 'large', label }: ScreenLoaderProp
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: spacing.xxl,
-  },
-  label: { ...typography.caption, marginTop: spacing.sm },
-});

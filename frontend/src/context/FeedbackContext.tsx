@@ -8,7 +8,8 @@ import React, {
 } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, typography, borderRadius } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { spacing, borderRadius } from '../constants/theme';
 
 export type FeedbackKind = 'info' | 'warning' | 'error';
 
@@ -24,10 +25,37 @@ const AUTO_DISMISS_MS = 5000;
 
 export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
+  const { colors, typography } = useTheme();
   const [message, setMessage] = useState<string | null>(null);
   const [kind, setKind] = useState<FeedbackKind>('info');
   const opacity = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        bannerWrap: {
+          position: 'absolute',
+          left: spacing.md,
+          right: spacing.md,
+          zIndex: 9999,
+        },
+        banner: {
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.md,
+          borderRadius: borderRadius.md,
+          shadowColor: colors.black,
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          elevation: 4,
+        },
+        bannerInfo: { backgroundColor: colors.primaryDark },
+        bannerWarning: { backgroundColor: colors.warning },
+        bannerError: { backgroundColor: colors.error },
+        bannerText: { ...typography.bodySmall, color: colors.white, fontWeight: '600' },
+      }),
+    [colors, typography],
+  );
 
   const dismiss = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -85,25 +113,3 @@ export function useFeedback(): FeedbackContextValue {
   if (!ctx) throw new Error('useFeedback must be used within FeedbackProvider');
   return ctx;
 }
-
-const styles = StyleSheet.create({
-  bannerWrap: {
-    position: 'absolute',
-    left: spacing.md,
-    right: spacing.md,
-    zIndex: 9999,
-  },
-  banner: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    shadowColor: colors.black,
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  bannerInfo: { backgroundColor: colors.primaryDark },
-  bannerWarning: { backgroundColor: colors.warning },
-  bannerError: { backgroundColor: colors.error },
-  bannerText: { ...typography.bodySmall, color: colors.white, fontWeight: '600' },
-});

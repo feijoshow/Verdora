@@ -1,15 +1,35 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, borderRadius, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { borderRadius, spacing } from '../../constants/theme';
 
 interface ConfidenceBarProps {
   confidence: number;
 }
 
 export function ConfidenceBar({ confidence }: ConfidenceBarProps) {
+  const { colors, typography } = useTheme();
   const percent = Math.round(confidence * 100);
   const barColor =
     percent >= 85 ? colors.success : percent >= 70 ? colors.warning : colors.secondaryDark;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrapper: { marginVertical: spacing.sm },
+        row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
+        label: { ...typography.bodySmall, fontWeight: '600', color: colors.text },
+        value: { ...typography.bodySmall, fontWeight: '700', color: colors.primary },
+        track: {
+          height: 8,
+          backgroundColor: colors.border,
+          borderRadius: borderRadius.full,
+          overflow: 'hidden',
+        },
+        fill: { height: '100%', borderRadius: borderRadius.full },
+      }),
+    [colors, typography],
+  );
 
   return (
     <View style={styles.wrapper}>
@@ -23,17 +43,3 @@ export function ConfidenceBar({ confidence }: ConfidenceBarProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: { marginVertical: spacing.sm },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
-  label: { ...typography.bodySmall, fontWeight: '600' },
-  value: { ...typography.bodySmall, fontWeight: '700', color: colors.primary },
-  track: {
-    height: 8,
-    backgroundColor: colors.border,
-    borderRadius: borderRadius.full,
-    overflow: 'hidden',
-  },
-  fill: { height: '100%', borderRadius: borderRadius.full },
-});

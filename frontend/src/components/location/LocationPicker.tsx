@@ -17,7 +17,8 @@ import {
   type NamibiaTown,
   type VerdoraLocation,
 } from '../../data/namibiaLocations';
-import { borderRadius, colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { borderRadius, spacing } from '../../constants/theme';
 
 interface LocationPickerProps {
   value: VerdoraLocation | null;
@@ -29,10 +30,93 @@ interface LocationPickerProps {
 type PickerStage = 'closed' | 'region' | 'town';
 
 export function LocationPicker({ value, onChange, label = 'Location', error }: LocationPickerProps) {
+  const { colors, typography } = useTheme();
   const [stage, setStage] = useState<PickerStage>('closed');
   const [pendingRegion, setPendingRegion] = useState<NamibiaRegion | null>(null);
   const [customTownText, setCustomTownText] = useState('');
   const [showCustomTownInput, setShowCustomTownInput] = useState(false);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrapper: { marginBottom: spacing.md },
+        label: { ...typography.bodySmall, fontWeight: '600', color: colors.text, marginBottom: spacing.xs + 2 },
+        field: {
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: borderRadius.md,
+          paddingVertical: spacing.sm + 4,
+          paddingHorizontal: spacing.sm + 6,
+          backgroundColor: colors.surface,
+        },
+        fieldError: { borderColor: colors.error },
+        fieldValue: { ...typography.body, fontWeight: '500', color: colors.text },
+        fieldSubValue: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+        fieldPlaceholder: { ...typography.body, color: colors.textMuted },
+        errorText: { ...typography.caption, color: colors.error, marginTop: spacing.xs },
+        modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+        sheet: {
+          backgroundColor: colors.surface,
+          borderTopLeftRadius: borderRadius.lg + 2,
+          borderTopRightRadius: borderRadius.lg + 2,
+          maxHeight: '75%',
+          paddingBottom: spacing.sm + 4,
+        },
+        sheetHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm + 6,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        },
+        sheetTitle: { ...typography.body, fontWeight: '700', color: colors.text, flex: 1, textAlign: 'center' },
+        sheetHeaderAction: { ...typography.bodySmall, color: colors.primary, fontWeight: '600', width: 50 },
+        headerSpacer: { width: 40 },
+        row: {
+          paddingVertical: spacing.sm + 6,
+          paddingHorizontal: spacing.md,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottomWidth: 1,
+          borderBottomColor: colors.background,
+        },
+        rowText: { ...typography.bodySmall, fontSize: 15, color: colors.text },
+        rowSubText: { ...typography.caption, color: colors.textMuted },
+        otherRow: { backgroundColor: colors.primarySoft },
+        otherRowText: { color: colors.primary, fontWeight: '600' },
+        emptyListText: {
+          ...typography.bodySmall,
+          padding: spacing.lg,
+          textAlign: 'center',
+          color: colors.textMuted,
+        },
+        customTownWrap: { padding: spacing.md },
+        customTownLabel: { ...typography.bodySmall, color: colors.text, marginBottom: spacing.sm + 2 },
+        customTownInput: {
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: borderRadius.md,
+          paddingVertical: spacing.sm + 4,
+          paddingHorizontal: spacing.sm + 6,
+          fontSize: 16,
+          marginBottom: spacing.sm + 6,
+          color: colors.text,
+          backgroundColor: colors.background,
+        },
+        confirmButton: {
+          backgroundColor: colors.primary,
+          borderRadius: borderRadius.md,
+          paddingVertical: spacing.sm + 6,
+          alignItems: 'center',
+        },
+        confirmButtonDisabled: { backgroundColor: colors.primaryLight, opacity: 0.5 },
+        confirmButtonText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+      }),
+    [colors, typography],
+  );
 
   const displayText = useMemo(() => {
     if (!value) return null;
@@ -202,6 +286,27 @@ function SheetHeader({
   onClose: () => void;
   onBack?: () => void;
 }) {
+  const { colors, typography } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        sheetHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm + 6,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        },
+        sheetTitle: { ...typography.body, fontWeight: '700', color: colors.text, flex: 1, textAlign: 'center' },
+        sheetHeaderAction: { ...typography.bodySmall, color: colors.primary, fontWeight: '600', width: 50 },
+        headerSpacer: { width: 40 },
+      }),
+    [colors, typography],
+  );
+
   return (
     <View style={styles.sheetHeader}>
       {onBack ? (
@@ -218,83 +323,3 @@ function SheetHeader({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: { marginBottom: spacing.md },
-  label: { ...typography.bodySmall, fontWeight: '600', color: colors.text, marginBottom: spacing.xs + 2 },
-  field: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm + 4,
-    paddingHorizontal: spacing.sm + 6,
-    backgroundColor: colors.surface,
-  },
-  fieldError: { borderColor: colors.error },
-  fieldValue: { ...typography.body, fontWeight: '500', color: colors.text },
-  fieldSubValue: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  fieldPlaceholder: { ...typography.body, color: colors.textMuted },
-  errorText: { ...typography.caption, color: colors.error, marginTop: spacing.xs },
-
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: borderRadius.lg + 2,
-    borderTopRightRadius: borderRadius.lg + 2,
-    maxHeight: '75%',
-    paddingBottom: spacing.sm + 4,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 6,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  sheetTitle: { ...typography.body, fontWeight: '700', color: colors.text, flex: 1, textAlign: 'center' },
-  sheetHeaderAction: { ...typography.bodySmall, color: colors.primary, fontWeight: '600', width: 50 },
-  headerSpacer: { width: 40 },
-
-  row: {
-    paddingVertical: spacing.sm + 6,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.background,
-  },
-  rowText: { ...typography.bodySmall, fontSize: 15, color: colors.text },
-  rowSubText: { ...typography.caption, color: colors.textMuted },
-  otherRow: { backgroundColor: colors.primarySoft },
-  otherRowText: { color: colors.primary, fontWeight: '600' },
-  emptyListText: {
-    ...typography.bodySmall,
-    padding: spacing.lg,
-    textAlign: 'center',
-    color: colors.textMuted,
-  },
-
-  customTownWrap: { padding: spacing.md },
-  customTownLabel: { ...typography.bodySmall, color: colors.text, marginBottom: spacing.sm + 2 },
-  customTownInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm + 4,
-    paddingHorizontal: spacing.sm + 6,
-    fontSize: 16,
-    marginBottom: spacing.sm + 6,
-    color: colors.text,
-  },
-  confirmButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm + 6,
-    alignItems: 'center',
-  },
-  confirmButtonDisabled: { backgroundColor: colors.primaryLight, opacity: 0.5 },
-  confirmButtonText: { color: colors.white, fontWeight: '700', fontSize: 15 },
-});

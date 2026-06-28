@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Input } from '../ui';
+import { MapLocationPicker } from '../location/MapLocationPicker';
+import type { DeviceCoordinates } from '../../services/location/deviceLocationService';
 import { MAX_FARM_FIELDS } from '../../constants/fields';
 import {
   listFarmFields,
@@ -8,7 +10,8 @@ import {
   saveFarmField,
 } from '../../services/fields/fieldService';
 import type { FarmField } from '../../types/field';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 
 interface FieldsManagerProps {
   userId: string;
@@ -17,12 +20,39 @@ interface FieldsManagerProps {
 
 /** CRUD for up to 5 named plots with optional coordinates */
 export function FieldsManager({ userId, embedded = false }: FieldsManagerProps) {
+  const { colors, typography } = useTheme();
   const [fields, setFields] = useState<FarmField[]>([]);
   const [name, setName] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [mapPin, setMapPin] = useState<DeviceCoordinates | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: { marginBottom: spacing.md },
+        title: { ...typography.h3, fontSize: 16, color: colors.text, marginBottom: spacing.xs },
+        subtitle: { ...typography.caption, marginBottom: spacing.md, lineHeight: 18, color: colors.textSecondary },
+        fieldRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: spacing.sm,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.border,
+          marginBottom: spacing.xs,
+        },
+        fieldInfo: { flex: 1 },
+        fieldName: { ...typography.bodySmall, fontWeight: '700', color: colors.text },
+        coords: { ...typography.caption, marginTop: 2, color: colors.textSecondary },
+        coordsMuted: { ...typography.caption, marginTop: 2, fontStyle: 'italic', color: colors.textMuted },
+        edit: { ...typography.caption, color: colors.primary, fontWeight: '600', marginRight: spacing.md },
+        delete: { fontSize: 16, color: colors.textMuted, padding: spacing.xs },
+        actions: { flexDirection: 'row', gap: spacing.sm },
+        btn: { flex: 1 },
+        limit: { ...typography.caption, fontStyle: 'italic', textAlign: 'center', color: colors.textMuted },
+      }),
+    [colors, typography],
+  );
 
   const load = useCallback(async () => {
     setFields(await listFarmFields(userId));
@@ -34,16 +64,18 @@ export function FieldsManager({ userId, embedded = false }: FieldsManagerProps) 
 
   const resetForm = () => {
     setName('');
-    setLatitude('');
-    setLongitude('');
+    setMapPin(null);
     setEditingId(null);
   };
 
   const startEdit = (field: FarmField) => {
     setEditingId(field.id);
     setName(field.name);
-    setLatitude(field.latitude != null ? String(field.latitude) : '');
-    setLongitude(field.longitude != null ? String(field.longitude) : '');
+    setMapPin(
+      field.latitude != null && field.longitude != null
+        ? { latitude: field.latitude, longitude: field.longitude }
+        : null,
+    );
   };
 
   const handleSave = async () => {
@@ -53,14 +85,13 @@ export function FieldsManager({ userId, embedded = false }: FieldsManagerProps) 
     }
     setSaving(true);
     try {
-      const lat = latitude.trim() ? parseFloat(latitude) : undefined;
-      const lng = longitude.trim() ? parseFloat(longitude) : undefined;
-      if (latitude.trim() && Number.isNaN(lat!)) throw new Error('Invalid latitude');
-      if (longitude.trim() && Number.isNaN(lng!)) throw new Error('Invalid longitude');
-
       await saveFarmField(
         userId,
-        { name: name.trim(), latitude: lat, longitude: lng },
+        {
+          name: name.trim(),
+          latitude: mapPin?.latitude,
+          longitude: mapPin?.longitude,
+        },
         editingId ?? undefined,
       );
       resetForm();
@@ -101,11 +132,9 @@ export function FieldsManager({ userId, embedded = false }: FieldsManagerProps) 
           <View style={styles.fieldInfo}>
             <Text style={styles.fieldName}>{field.name}</Text>
             {field.latitude != null && field.longitude != null ? (
-              <Text style={styles.coords}>
-                {field.latitude.toFixed(4)}, {field.longitude.toFixed(4)}
-              </Text>
+              <Text style={styles.coords}>Pinned on map</Text>
             ) : (
-              <Text style={styles.coordsMuted}>No GPS pin — uses farm location</Text>
+              <Text style={styles.coordsMuted}>No map pin — uses farm location</Text>
             )}
           </View>
           <Pressable onPress={() => startEdit(field)} hitSlop={8}>
@@ -125,19 +154,11 @@ export function FieldsManager({ userId, embedded = false }: FieldsManagerProps) 
             onChangeText={setName}
             placeholder="e.g. North field, Greenhouse B"
           />
-          <Input
-            label="Latitude (optional)"
-            value={latitude}
-            onChangeText={setLatitude}
-            placeholder="14.1234"
-            keyboardType="decimal-pad"
-          />
-          <Input
-            label="Longitude (optional)"
-            value={longitude}
-            onChangeText={setLongitude}
-            placeholder="121.0567"
-            keyboardType="decimal-pad"
+          <MapLocationPicker
+            label="Field location (optional)"
+            buttonLabel="Pick field on map"
+            value={mapPin}
+            onChange={setMapPin}
           />
           <View style={styles.actions}>
             <Button
@@ -161,26 +182,3 @@ export function FieldsManager({ userId, embedded = false }: FieldsManagerProps) 
 
   return <Card style={styles.card}>{body}</Card>;
 }
-
-const styles = StyleSheet.create({
-  card: { marginBottom: spacing.md },
-  title: { ...typography.h3, fontSize: 16, color: colors.primaryDark, marginBottom: spacing.xs },
-  subtitle: { ...typography.caption, marginBottom: spacing.md, lineHeight: 18 },
-  fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    marginBottom: spacing.xs,
-  },
-  fieldInfo: { flex: 1 },
-  fieldName: { ...typography.bodySmall, fontWeight: '700', color: colors.primaryDark },
-  coords: { ...typography.caption, marginTop: 2 },
-  coordsMuted: { ...typography.caption, marginTop: 2, fontStyle: 'italic' },
-  edit: { ...typography.caption, color: colors.primary, fontWeight: '600', marginRight: spacing.md },
-  delete: { fontSize: 16, color: colors.textMuted, padding: spacing.xs },
-  actions: { flexDirection: 'row', gap: spacing.sm },
-  btn: { flex: 1 },
-  limit: { ...typography.caption, fontStyle: 'italic', textAlign: 'center' },
-});

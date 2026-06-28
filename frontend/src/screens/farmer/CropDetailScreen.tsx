@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
@@ -7,7 +7,8 @@ import { SmartPlantingCalendar } from '../../components/calendar/SmartPlantingCa
 import { createPlantingEvent } from '../../services/api/plantationCalendarService';
 import { trackFarmingRecord } from '../../services/analytics/dataCollectionService';
 import { getCropByName, recommendByWeather } from '../../services/api/cropLibraryService';
-import { spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 import type { CropEntry } from '../../services/api/cropLibraryService';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
@@ -19,6 +20,7 @@ type Props = NativeStackScreenProps<FarmerStackParamList, 'CropDetail'>;
 
 export function CropDetailScreen({ route, navigation }: Props) {
   const cropName = route.params.cropName;
+  const { colors, typography } = useTheme();
   const [crop, setCrop] = useState<CropEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +28,17 @@ export function CropDetailScreen({ route, navigation }: Props) {
   const { user } = useAuth();
   const [weatherNote, setWeatherNote] = useState<string | null>(null);
   const { showInfo, showError } = useFeedback();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        cardTitle: { ...typography.h3, marginBottom: spacing.xs, color: colors.text },
+        cardText: { ...typography.bodySmall, marginBottom: spacing.xs, color: colors.text },
+        cardHint: { ...typography.caption, fontStyle: 'italic', marginTop: spacing.xs, color: colors.textMuted },
+        actions: { marginTop: spacing.md, marginBottom: spacing.lg },
+      }),
+    [colors, typography],
+  );
 
   useEffect(() => {
     (async () => {
@@ -157,10 +170,3 @@ export function CropDetailScreen({ route, navigation }: Props) {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  cardTitle: { ...typography.h3, marginBottom: spacing.xs },
-  cardText: { ...typography.bodySmall, marginBottom: spacing.xs },
-  cardHint: { ...typography.caption, fontStyle: 'italic', marginTop: spacing.xs },
-  actions: { marginTop: spacing.md, marginBottom: spacing.lg },
-});

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, Card, Input, ScreenWrapper } from '../../components/ui';
@@ -7,12 +7,14 @@ import {
   requestPasswordResetCode,
 } from '../../services/api/authService';
 import { toApiError } from '../../services/api/errors';
-import { colors, spacing, typography } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../constants/theme';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 
 export function ResetPasswordScreen({ navigation, route }: Props) {
+  const { colors, typography } = useTheme();
   const { email } = route.params;
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -21,6 +23,21 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        title: { ...typography.h1, color: colors.text, textAlign: 'center' },
+        subtitle: { ...typography.bodySmall, marginTop: spacing.sm, marginBottom: spacing.lg, textAlign: 'center', color: colors.textSecondary },
+        email: { fontWeight: '600', color: colors.text },
+        formCard: { width: '100%', maxWidth: 440, alignSelf: 'center', marginBottom: spacing.md },
+        error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
+        info: { ...typography.bodySmall, color: colors.success, marginBottom: spacing.md },
+        resendWrap: { alignSelf: 'center', marginBottom: spacing.sm, padding: spacing.sm },
+        resendText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
+      }),
+    [colors, typography],
+  );
 
   const handleReset = async () => {
     setError('');
@@ -108,14 +125,3 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  title: { ...typography.h1, color: colors.primaryDark, textAlign: 'center' },
-  subtitle: { ...typography.bodySmall, marginTop: spacing.sm, marginBottom: spacing.lg, textAlign: 'center' },
-  email: { fontWeight: '600', color: colors.text },
-  formCard: { width: '100%', maxWidth: 440, alignSelf: 'center', marginBottom: spacing.md },
-  error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
-  info: { ...typography.bodySmall, color: colors.success, marginBottom: spacing.md },
-  resendWrap: { alignSelf: 'center', marginBottom: spacing.sm, padding: spacing.sm },
-  resendText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
-});

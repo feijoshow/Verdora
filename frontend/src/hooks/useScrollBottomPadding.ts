@@ -2,9 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TAB_BAR_CONTENT_HEIGHT } from '../navigation/FarmerTabNavigator';
-
-const TAB_BAR_BASE_HEIGHT = TAB_BAR_CONTENT_HEIGHT;
+import { TAB_BAR_CONTENT_HEIGHT } from '../navigation/tabBarConstants';
 
 /** Bottom inset for scroll content — tab bar when inside tabs, safe area otherwise. */
 export function useScrollBottomPadding(): number {
@@ -15,7 +13,7 @@ export function useScrollBottomPadding(): number {
   while (parent) {
     const state = parent.getState();
     if (state?.type === 'tab') {
-      return TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, Platform.OS === 'web' ? 8 : 0);
+      return TAB_BAR_CONTENT_HEIGHT + Math.max(insets.bottom, Platform.OS === 'web' ? 8 : 0);
     }
     parent = parent.getParent();
   }

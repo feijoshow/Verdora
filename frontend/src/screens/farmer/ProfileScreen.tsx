@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LocationPicker } from '../../components/location/LocationPicker';
+import { MapLocationPicker } from '../../components/location/MapLocationPicker';
 import { Button, CollapsibleSection, Input, ScreenWrapper } from '../../components/ui';
+import { AppearanceSettingsCard } from '../../components/settings/AppearanceSettingsCard';
 import { PrivacySettingsCard } from '../../components/privacy/PrivacySettingsCard';
 import { FieldsManager } from '../../components/fields/FieldsManager';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
@@ -10,7 +12,8 @@ import { useAuth } from '../../context/AuthContext';
 import type { VerdoraLocation } from '../../data/namibiaLocations';
 import type { FarmerType, User } from '../../types';
 import { applyVerdoraLocation, isValidVerdoraLocation, verdoraLocationFromUser } from '../../utils/locationHelpers';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, borderRadius } from '../../constants/theme';
 
 const FARMER_TYPES: { value: FarmerType; label: string }[] = [
   { value: 'small-scale', label: 'Small-scale' },
@@ -19,6 +22,7 @@ const FARMER_TYPES: { value: FarmerType; label: string }[] = [
 
 export function ProfileScreen() {
   const { user, updateProfile, logout } = useAuth();
+  const { colors, typography } = useTheme();
   const [name, setName] = useState('');
   const [location, setLocation] = useState<VerdoraLocation | null>(null);
   const [locationError, setLocationError] = useState('');
@@ -27,6 +31,8 @@ export function ProfileScreen() {
   const [soilType, setSoilType] = useState('');
   const [methods, setMethods] = useState('');
   const [saving, setSaving] = useState(false);
+  const [latitude, setLatitude] = useState<number | undefined>();
+  const [longitude, setLongitude] = useState<number | undefined>();
 
   useEffect(() => {
     if (!user) return;
@@ -36,6 +42,8 @@ export function ProfileScreen() {
     setFarmerType(user.farmerType ?? 'small-scale');
     setSoilType(user.soilType ?? '');
     setMethods(user.farmingMethods?.join(', ') ?? '');
+    setLatitude(user.latitude);
+    setLongitude(user.longitude);
   }, [user]);
 
   if (!user || user.role !== 'farmer') return null;
@@ -70,6 +78,8 @@ export function ProfileScreen() {
       await updateProfile({
         name: name.trim() || user.name,
         ...locationFields,
+        latitude,
+        longitude,
         farmSize: farmSize.trim() || undefined,
         farmerType,
         soilType: soilType.trim() || undefined,
@@ -86,7 +96,29 @@ export function ProfileScreen() {
     }
   };
 
-  const locationSubtitle = user.location ?? 'Set region & town for weather and advice';
+  const locationSubtitle =
+    latitude != null && longitude != null
+      ? `${user.location ?? 'Region not set'} · Farm pinned on map`
+      : user.location ?? 'Set region & town for weather and advice';
+
+  const styles = StyleSheet.create({
+    hint: { ...typography.caption, marginBottom: spacing.md, lineHeight: 18, color: colors.textMuted },
+    fieldLabel: { ...typography.bodySmall, fontWeight: '600', marginBottom: spacing.sm, color: colors.text },
+    typeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+    typeChip: {
+      flex: 1,
+      paddingVertical: spacing.md,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+    },
+    typeChipActive: { borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
+    typeText: { ...typography.bodySmall, color: colors.textSecondary },
+    typeTextActive: { color: colors.primary, fontWeight: '700' },
+    logout: { marginTop: spacing.md, marginBottom: spacing.lg },
+  });
 
   return (
     <ScreenWrapper keyboardAvoiding>
@@ -98,6 +130,16 @@ export function ProfileScreen() {
       </CollapsibleSection>
 
       <CollapsibleSection title="Location" subtitle={locationSubtitle} defaultOpen>
+        <MapLocationPicker
+          label="Pin your farm on the map"
+          value={
+            latitude != null && longitude != null ? { latitude, longitude } : null
+          }
+          onChange={(coords) => {
+            setLatitude(coords.latitude);
+            setLongitude(coords.longitude);
+          }}
+        />
         <LocationPicker
           label="Region & town/village"
           value={location}
@@ -138,6 +180,10 @@ export function ProfileScreen() {
         />
       </CollapsibleSection>
 
+      <CollapsibleSection title="Settings" subtitle="Appearance & display" defaultOpen>
+        <AppearanceSettingsCard embedded />
+      </CollapsibleSection>
+
       <CollapsibleSection title="Privacy & data">
         <PrivacySettingsCard embedded />
       </CollapsibleSection>
@@ -152,22 +198,3 @@ export function ProfileScreen() {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  hint: { ...typography.caption, marginBottom: spacing.md, lineHeight: 18 },
-  fieldLabel: { ...typography.bodySmall, fontWeight: '600', marginBottom: spacing.sm },
-  typeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  typeChip: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-  },
-  typeChipActive: { borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
-  typeText: { ...typography.bodySmall, color: colors.textSecondary },
-  typeTextActive: { color: colors.primary, fontWeight: '700' },
-  logout: { marginTop: spacing.md, marginBottom: spacing.lg },
-});
