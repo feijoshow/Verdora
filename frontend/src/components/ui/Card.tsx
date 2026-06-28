@@ -17,15 +17,19 @@ export function Card({ children, variant = 'default', style, ...rest }: CardProp
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
   default: {},
-  elevated: { ...shadows.card, borderWidth: 0 },
+  elevated: {
+    ...shadows.card,
+    borderWidth: 0,
+    borderRadius: borderRadius.xl,
+  },
   highlight: {
     backgroundColor: colors.surfaceAlt,
-    borderColor: colors.primaryLight,
+    borderColor: 'transparent',
   },
 });

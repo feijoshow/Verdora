@@ -1,17 +1,32 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { FarmCalendarDashboard } from '../../components/home/FarmCalendarDashboard';
+import { HomeHero } from '../../components/home/HomeHero';
+import { QuickActionsBar } from '../../components/home/QuickActionsBar';
 import { OutbreakNearYouBanner } from '../../components/intelligence/OutbreakNearYouBanner';
-import { ScreenHeader } from '../../components/navigation/ScreenHeader';
-import { Button, Card, EmptyState, InlineLoader, ScreenWrapper } from '../../components/ui';
+import { Card, EmptyState, InlineLoader, ScreenWrapper } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import { listMaintenanceLogs, deleteMaintenanceLog, deleteMaintenanceLogsForCrop } from '../../services/calendar/maintenanceService';
+import { listScheduledCareTasks } from '../../services/calendar/careScheduleService';
+import { deletePlantingEvent, listPlantingEvents } from '../../services/api/plantationCalendarService';
 import { getFarmerSummary, type FarmerSummary } from '../../services/data/farmerDataService';
 import { getFarmerNearbyAlerts } from '../../services/intelligence/intelligenceService';
+import {
+  dismissScheduledTask,
+  ensureNotificationPermissions,
+  cancelRemindersForCrop,
+  recordCareAndRemind,
+  syncAllCropReminders,
+  syncUpcomingNotifications,
+} from '../../services/notifications/reminderService';
 import type { DiseaseAlert } from '../../types/analytics';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import type { MaintenanceLog, MaintenanceType, ScheduledCareTask } from '../../types/maintenance';
+import type { PlantingEvent } from '../../types';
+import { colors, spacing, typography } from '../../constants/theme';
 import type { FarmerStackParamList, FarmerTabParamList } from '../../navigation/types';
 
 type Props = CompositeScreenProps<
@@ -19,100 +34,205 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<FarmerStackParamList>
 >;
 
-function StatPill({ icon, label }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string }) {
-  return (
-    <View style={styles.statPill}>
-      <Ionicons name={icon} size={14} color={colors.primary} />
-      <Text style={styles.statPillText}>{label}</Text>
-    </View>
-  );
-}
-
 export function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
   const [summary, setSummary] = useState<FarmerSummary | null>(null);
+  const [events, setEvents] = useState<PlantingEvent[]>([]);
+  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
+  const [scheduledTasks, setScheduledTasks] = useState<ScheduledCareTask[]>([]);
   const [nearbyAlerts, setNearbyAlerts] = useState<DiseaseAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [notificationsReady, setNotificationsReady] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (isRefresh = false) => {
     if (!user) return;
-    setLoading(true);
-    const [data, alerts] = await Promise.all([
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
+    const [data, alerts, planting, logs, tasks] = await Promise.all([
       getFarmerSummary(user),
       getFarmerNearbyAlerts(user),
+      listPlantingEvents(user.id),
+      listMaintenanceLogs(user.id),
+      listScheduledCareTasks(user.id),
     ]);
     setSummary(data);
     setNearbyAlerts(alerts);
+    setEvents(planting);
+    setMaintenanceLogs(logs);
+    let pendingTasks = tasks.filter((t) => t.status === 'pending');
+
+    if (planting.length > 0 && Platform.OS !== 'web' && pendingTasks.length === 0) {
+      const location = user.location ?? user.townName ?? user.regionName;
+      await syncAllCropReminders(user.id, planting, location);
+      pendingTasks = (await listScheduledCareTasks(user.id)).filter((t) => t.status === 'pending');
+    }
+
+    setScheduledTasks(pendingTasks);
     setLoading(false);
+    setRefreshing(false);
   }, [user]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const firstName = user?.name?.split(' ')[0] ?? 'Farmer';
+  useEffect(() => {
+    if (!user || Platform.OS === 'web') return;
+    ensureNotificationPermissions().then((granted) => {
+      setNotificationsReady(granted);
+      if (granted) syncUpcomingNotifications(user.id);
+    });
+  }, [user]);
+
+  const handleLogCare = async (
+    cropEventId: string,
+    cropName: string,
+    type: MaintenanceType,
+  ) => {
+    if (!user) return;
+    await recordCareAndRemind(user.id, cropEventId, cropName, type);
+    const [logs, tasks] = await Promise.all([
+      listMaintenanceLogs(user.id),
+      listScheduledCareTasks(user.id),
+    ]);
+    setMaintenanceLogs(logs);
+    setScheduledTasks(tasks.filter((t) => t.status === 'pending'));
+  };
+
+  const refreshCalendarData = useCallback(async () => {
+    if (!user) return;
+    const [planting, logs, tasks] = await Promise.all([
+      listPlantingEvents(user.id),
+      listMaintenanceLogs(user.id),
+      listScheduledCareTasks(user.id),
+    ]);
+    setEvents(planting);
+    setMaintenanceLogs(logs);
+    setScheduledTasks(tasks.filter((t) => t.status === 'pending'));
+  }, [user]);
+
+  const handleDeleteLog = async (logId: string) => {
+    if (!user) return;
+    const removed = await deleteMaintenanceLog(user.id, logId);
+    if (!removed) {
+      Alert.alert('Could not remove', 'That log was not found.');
+      return;
+    }
+    await refreshCalendarData();
+  };
+
+  const handleDismissTask = async (taskId: string) => {
+    if (!user) return;
+    await dismissScheduledTask(user.id, taskId);
+    await refreshCalendarData();
+  };
+
+  const handleDeletePlanting = async (cropEventId: string, cropName: string) => {
+    if (!user) return;
+    await deletePlantingEvent(user.id, cropEventId);
+    await cancelRemindersForCrop(user.id, cropEventId);
+    await deleteMaintenanceLogsForCrop(user.id, cropEventId);
+    await refreshCalendarData();
+  };
 
   return (
-    <ScreenWrapper>
-      <ScreenHeader
-        banner
-        title={`Hello, ${firstName}`}
-        subtitle={user?.location ?? undefined}
+    <ScreenWrapper
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => load(true)}
+          colors={[colors.primary]}
+          tintColor={colors.primary}
+        />
+      }
+    >
+      <HomeHero
+        cropCount={events.length}
+        scanCount={summary?.scanCount ?? 0}
       />
 
-      <OutbreakNearYouBanner
-        alerts={nearbyAlerts}
-        onPress={(alert) =>
-          Alert.alert('Regional outbreak alert', alert.message)
-        }
+      <QuickActionsBar
+        actions={[
+          {
+            key: 'scan',
+            icon: 'camera',
+            label: 'Scan',
+            tint: colors.actionScan,
+            onPress: () => navigation.navigate('Scanner'),
+          },
+          {
+            key: 'plant',
+            icon: 'calendar',
+            label: 'Plant',
+            tint: colors.actionPlant,
+            onPress: () => navigation.navigate('Calendar'),
+          },
+          {
+            key: 'weather',
+            icon: 'partly-sunny',
+            label: 'Weather',
+            tint: colors.actionWeather,
+            onPress: () => navigation.navigate('Weather'),
+          },
+          {
+            key: 'chat',
+            icon: 'chatbubbles',
+            label: 'Chat',
+            tint: colors.actionChat,
+            onPress: () => navigation.navigate('Chat'),
+          },
+          {
+            key: 'library',
+            icon: 'library',
+            label: 'Library',
+            tint: colors.actionLibrary,
+            onPress: () => navigation.navigate('CropLibrary'),
+          },
+        ]}
       />
+
+      {Platform.OS !== 'web' && !notificationsReady ? (
+        <Pressable
+          style={styles.notifyChip}
+          onPress={() => ensureNotificationPermissions().then(setNotificationsReady)}
+        >
+          <Ionicons name="notifications-outline" size={14} color={colors.textMuted} />
+          <Text style={styles.notifyChipText}>Enable reminders</Text>
+        </Pressable>
+      ) : null}
+
+      {nearbyAlerts.length > 0 ? (
+        <OutbreakNearYouBanner
+          alerts={nearbyAlerts}
+          onPress={(alert) => Alert.alert('Alert', alert.message, [{ text: 'OK' }])}
+        />
+      ) : null}
 
       {loading ? (
         <InlineLoader />
-      ) : summary ? (
-        <Card variant="elevated" style={styles.statsCard}>
-          <View style={styles.statsHeader}>
-            <Ionicons name="leaf" size={18} color={colors.primary} />
-            <Text style={styles.statsTitle}>Your farm</Text>
-          </View>
-          {summary.crops.length > 0 ? (
-            <Text style={styles.crops}>Growing: {summary.crops.join(', ')}</Text>
-          ) : (
-            <Text style={styles.cropsMuted}>Add crops in Calendar for tailored advice</Text>
-          )}
-          <View style={styles.statsRow}>
-            <StatPill icon="camera-outline" label={`${summary.scanCount} scans`} />
-            <StatPill icon="calendar-outline" label={`${summary.calendarEventCount} events`} />
-          </View>
-        </Card>
       ) : (
-        <EmptyState
-          message="Could not load your farm summary. Pull down to refresh."
-          variant="muted"
-          style={styles.statsCard}
+        <FarmCalendarDashboard
+          events={events}
+          maintenanceLogs={maintenanceLogs}
+          scheduledTasks={scheduledTasks}
+          onLogCare={handleLogCare}
+          onDeleteLog={handleDeleteLog}
+          onDismissTask={handleDismissTask}
+          onDeletePlanting={handleDeletePlanting}
+          onOpenCalendar={() => navigation.navigate('Calendar')}
         />
       )}
 
-      <Button
-        title="Scan a crop"
-        onPress={() => navigation.navigate('Scanner')}
-        fullWidth
-        style={styles.primaryAction}
-      />
+      {!loading && events.length === 0 ? (
+        <EmptyState
+          message="Your calendar is empty — tap Plant to schedule your first crop."
+          variant="muted"
+        />
+      ) : null}
 
-      <View style={styles.linkRow}>
-        <Pressable onPress={() => navigation.navigate('CropLibrary')} style={styles.linkBtn}>
-          <Ionicons name="library-outline" size={16} color={colors.primary} />
-          <Text style={styles.linkText}>Crop library</Text>
-        </Pressable>
-        <Text style={styles.linkDivider}>·</Text>
-        <Pressable onPress={() => navigation.navigate('Calendar')} style={styles.linkBtn}>
-          <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-          <Text style={styles.linkText}>Calendar</Text>
-        </Pressable>
-      </View>
-
-      {summary && summary.recentScans.length > 0 ? (
+      {!loading && summary && summary.recentScans.length > 0 ? (
         <Pressable
           onPress={() =>
             navigation.navigate('DiagnosisResults', { result: summary.recentScans[0] })
@@ -132,34 +252,17 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  statsCard: { marginBottom: spacing.md },
-  statsHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
-  statsTitle: { ...typography.h3, fontSize: 16, color: colors.primaryDark },
-  crops: { ...typography.bodySmall, lineHeight: 22 },
-  cropsMuted: { ...typography.caption, fontStyle: 'italic', lineHeight: 18 },
-  statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, flexWrap: 'wrap' },
-  statPill: {
+  notifyChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.primarySoft,
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
+    marginBottom: spacing.md,
   },
-  statPillText: { ...typography.caption, color: colors.primaryDark, fontWeight: '600' },
-  primaryAction: { marginBottom: spacing.sm },
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  linkText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
-  linkDivider: { ...typography.bodySmall, color: colors.textMuted },
-  latestScan: { marginBottom: spacing.md },
+  notifyChipText: { ...typography.caption, color: colors.textMuted },
+  latestScan: { marginTop: spacing.md, marginBottom: spacing.md },
   latestLabel: { ...typography.caption, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.xs },
   scanCrop: { ...typography.h3, fontSize: 16, color: colors.primary },
   scanMeta: { ...typography.caption, marginTop: 4 },

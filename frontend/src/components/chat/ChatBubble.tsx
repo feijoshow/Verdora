@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ChatMessage } from '../../types';
+import { MarkdownText } from '../ui/MarkdownText';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 
 interface ChatBubbleProps {
@@ -29,9 +30,12 @@ export function ChatBubble({ message }: ChatBubbleProps) {
           isUser ? styles.bubbleUser : isError ? styles.bubbleError : styles.bubbleAssistant,
         ]}
       >
-        <Text style={[styles.text, isUser && styles.textUser, isError && styles.textError]}>
+        <MarkdownText
+          style={[styles.text, isUser && styles.textUser, isError && styles.textError]}
+          boldStyle={[styles.text, isUser && styles.textUser, isError && styles.textError]}
+        >
           {message.content}
-        </Text>
+        </MarkdownText>
         <Text style={[styles.time, isUser && styles.timeUser, isError && styles.timeError]}>
           {new Date(message.timestamp).toLocaleTimeString(undefined, {
             hour: '2-digit',

@@ -6,7 +6,7 @@ import {
   Text,
 } from 'react-native';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
-import { EmptyState, InlineLoader, ScreenWrapper } from '../../components/ui';
+import { EmptyState, InlineLoader, ScreenWrapper, SegmentedControl } from '../../components/ui';
 import { CropPlantingPlanner, type PlannerSavePayload } from '../../components/calendar/CropPlantingPlanner';
 import { EventFormModal, type EventFormValues } from '../../components/calendar/EventFormModal';
 import { PlantingEventCard } from '../../components/calendar/PlantingEventCard';
@@ -19,11 +19,20 @@ import {
   updatePlantingEvent,
 } from '../../services/api/plantationCalendarService';
 import { toApiError } from '../../services/api/errors';
+import {
+  cancelRemindersForCrop,
+  recordCareAndRemind,
+  scheduleCropCareReminders,
+} from '../../services/notifications/reminderService';
+import type { MaintenanceType } from '../../types/maintenance';
 import type { PlantingEvent } from '../../types';
-import { colors, spacing, typography } from '../../constants/theme';
+import { colors } from '../../constants/theme';
+
+type CalendarTab = 'plan' | 'mine';
 
 export function PlantationCalendarScreen() {
   const { user } = useAuth();
+  const [tab, setTab] = useState<CalendarTab>('plan');
   const [events, setEvents] = useState<PlantingEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,7 +79,13 @@ export function PlantationCalendarScreen() {
         notes: payload.notes || undefined,
       }, user);
       await trackFarmingRecord(user, saved);
+      await scheduleCropCareReminders(
+        user.id,
+        saved,
+        user.location ?? user.townName ?? user.regionName,
+      );
       setPlannerKey((k) => k + 1);
+      setTab('mine');
       await loadEvents(true);
       Alert.alert('Added', `${payload.cropName} is on your calendar.`);
     } catch (err) {
@@ -93,6 +108,11 @@ export function PlantationCalendarScreen() {
         notes: values.notes.trim() || undefined,
       }, user);
       await trackFarmingRecord(user, saved);
+      await scheduleCropCareReminders(
+        user.id,
+        saved,
+        user.location ?? user.townName ?? user.regionName,
+      );
       setEditModalVisible(false);
       await loadEvents(true);
     } catch (err) {
@@ -103,7 +123,7 @@ export function PlantationCalendarScreen() {
   };
 
   const handleDelete = (event: PlantingEvent) => {
-    Alert.alert('Delete event', `Remove ${event.cropName} from your calendar?`, [
+    Alert.alert('Delete crop', `Remove ${event.cropName} from your calendar?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -112,6 +132,7 @@ export function PlantationCalendarScreen() {
           try {
             if (!user) return;
             await deletePlantingEvent(user.id, event.id);
+            await cancelRemindersForCrop(user.id, event.id);
             await trackCropDeleted(user, event.id);
             await loadEvents(true);
           } catch (err) {
@@ -120,6 +141,15 @@ export function PlantationCalendarScreen() {
         },
       },
     ]);
+  };
+
+  const handleLogCare = async (
+    event: PlantingEvent,
+    type: MaintenanceType,
+  ) => {
+    if (!user) return;
+    await recordCareAndRemind(user.id, event.id, event.cropName, type);
+    Alert.alert('Logged', `${event.cropName} — care recorded.`);
   };
 
   return (
@@ -134,36 +164,47 @@ export function PlantationCalendarScreen() {
           />
         }
       >
-        <ScreenHeader title="Calendar" />
+        <ScreenHeader banner title="Plant" />
 
-        {user ? (
+        <SegmentedControl
+          options={[
+            { value: 'plan', label: 'Add crop' },
+            { value: 'mine', label: `My crops (${events.length})` },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+
+        {tab === 'plan' && user ? (
           <CropPlantingPlanner
             key={plannerKey}
             userId={user.id}
+            userLocation={user.location ?? user.townName ?? user.regionName}
             onSave={handlePlannerSave}
             saving={saving}
           />
         ) : null}
 
-        <Text style={styles.sectionTitle}>My calendar ({events.length})</Text>
-
-        {loading && events.length === 0 ? (
-          <InlineLoader />
-        ) : events.length === 0 ? (
-          <EmptyState
-            message='No crops scheduled yet. Pick a crop above and tap "Add to my calendar".'
-            variant="muted"
-          />
-        ) : (
-          events.map((event) => (
+        {tab === 'mine' ? (
+          loading && events.length === 0 ? (
+            <InlineLoader />
+          ) : events.length === 0 ? (
+            <EmptyState
+              message='Nothing scheduled yet. Switch to "Add crop" to plan your first planting.'
+              variant="muted"
+            />
+          ) : (
+            events.map((event) => (
             <PlantingEventCard
               key={event.id}
               event={event}
               onPress={() => openEdit(event)}
               onDelete={() => handleDelete(event)}
+              onLogCare={(type) => handleLogCare(event, type)}
             />
-          ))
-        )}
+            ))
+          )
+        ) : null}
       </ScreenWrapper>
 
       <EventFormModal
@@ -177,7 +218,3 @@ export function PlantationCalendarScreen() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionTitle: { ...typography.h3, marginVertical: spacing.md },
-});

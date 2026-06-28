@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { DiagnosisResult } from '../../types';
-import { Card, EmptyState } from '../ui';
+import { Card, EmptyState, MarkdownText } from '../ui';
 import { colors, spacing, typography } from '../../constants/theme';
 
 interface DiagnosisHistoryListProps {
@@ -43,9 +43,9 @@ export function DiagnosisHistoryList({ items, onPressItem }: DiagnosisHistoryLis
               )}
               <View style={styles.info}>
                 <Text style={styles.crop}>{item.cropName}</Text>
-                <Text style={styles.disease}>
+                <MarkdownText style={styles.disease} boldStyle={styles.disease}>
                   {item.disease ?? 'Healthy — no disease detected'}
-                </Text>
+                </MarkdownText>
                 <Text style={styles.meta}>
                   {item.fieldName ? `${item.fieldName} · ` : ''}
                   {Math.round(item.confidence * 100)}% · {formatDate(item.scannedAt)}

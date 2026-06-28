@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
-import { Button, Card, EmptyState, ScreenWrapper } from '../../components/ui';
+import { Button, Card, EmptyState, MarkdownText, ScreenWrapper } from '../../components/ui';
 import { ConfidenceBar } from '../../components/scanner/ConfidenceBar';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 import type { FarmerStackParamList } from '../../navigation/types';
@@ -57,14 +57,17 @@ export function DiagnosisResultsScreen({ navigation, route }: Props) {
         ) : null}
 
         <Text style={styles.label}>Condition</Text>
-        <Text style={[styles.disease, isHealthy && styles.healthyText]}>
+        <MarkdownText
+          style={[styles.disease, isHealthy && styles.healthyText]}
+          boldStyle={[styles.disease, isHealthy && styles.healthyText]}
+        >
           {result.disease ?? 'No disease detected'}
-        </Text>
+        </MarkdownText>
 
         <ConfidenceBar confidence={result.confidence} />
 
-        <Text style={styles.label}>Treatment</Text>
-        <Text style={styles.treatment}>{result.treatment}</Text>
+        <Text style={styles.label}>Suggested treatment</Text>
+        <MarkdownText style={styles.treatment}>{result.treatment}</MarkdownText>
 
         <Text style={styles.timestamp}>
           Scanned {new Date(result.scannedAt).toLocaleString()}

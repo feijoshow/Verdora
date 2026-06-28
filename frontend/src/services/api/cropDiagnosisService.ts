@@ -1,26 +1,22 @@
 import { getChatLocationLabel } from '../../utils/locationHelpers';
 import { env, hasAiApi } from '../../config/env';
-import {
-  GEMINI_CROP_CATALOG,
-  NAMIBIA_TREATMENT_HINTS,
-  normalizeCropName,
-} from '../ai/cropCatalog';
 import type { DiagnosisResult, User } from '../../types';
 import { generateId } from '../../utils/generateId';
 import { readImageForVision } from '../../utils/readImageBase64';
 import { scanRecordToDiagnosis } from '../data/farmerDataService';
 import { getUserCropScans } from '../analytics/dataCollectionService';
+import {
+  buildTreatmentText,
+  buildVisionScanPrompt,
+  normalizeConfidence,
+  resolveVisionCropName,
+  shouldRejectAsNonCrop,
+  type VisionDiagnosisPayload,
+} from '../ai/scanPrompts';
 import { API_ENDPOINTS, ZAI_VISION_MODEL, ZAI_CHAT_COMPLETIONS_URL } from './endpoints';
 import { aiApiPost, externalClient } from './client';
 import { toApiError } from './errors';
 import type { DiagnoseCropResponse, DiagnosisOutcome } from './types';
-
-interface VisionDiagnosisPayload {
-  cropName?: string;
-  disease?: string | null;
-  confidence?: number;
-  treatment?: string;
-}
 
 interface ZaiChatCompletionResponse {
   choices?: { message?: { content?: string } }[];
@@ -45,7 +41,7 @@ function scanErrorMessage(error: unknown): string {
     return 'Scan API missing ZAI_API_KEY — set it in api/.env and restart the server.';
   }
   if (msg.includes('not valid json') || msg.includes('empty response') || msg.includes('unparseable')) {
-    return "Couldn't get a confident read — try a closer photo in better light.";
+    return "Couldn't read the scan result — try a clearer photo of the affected leaf or fruit.";
   }
   if (msg.includes('could not be read')) {
     return 'Image could not be read. Re-upload the photo or try capturing again.';
@@ -68,38 +64,6 @@ function parseVisionDiagnosis(raw: string): VisionDiagnosisPayload | null {
   }
 }
 
-function buildVisionScanPrompt(user: User): string {
-  const crops = user.cropsPlanted?.join(', ') ?? 'unknown';
-  return (
-    `You are Verdora crop disease analyst for Namibian farmers. ` +
-    `Farmer location: ${getChatLocationLabel(user)}. Registered crops: ${crops}. ` +
-    `Use crop names ONLY from this catalog when possible: ${GEMINI_CROP_CATALOG}. ` +
-    `If the image is not a plant/crop (e.g. person, tool, soil only, sky, wall), set cropName to "not a crop" and confidence below 0.3. ` +
-    `If the image is too blurry or too far away to identify, set confidence below 0.4 and say so in treatment. ` +
-    `Do not guess a crop name when uncertain — prefer low confidence over a wrong identification. ` +
-    `${NAMIBIA_TREATMENT_HINTS} ` +
-    `Respond ONLY with valid JSON (no markdown): ` +
-    `{"cropName":"string","disease":"string or null if healthy","confidence":0.0,"treatment":"actionable advice"}`
-  );
-}
-
-function isNonCropImage(parsed: VisionDiagnosisPayload): boolean {
-  const name = parsed.cropName?.toLowerCase() ?? '';
-  return (
-    name.includes('not a crop') ||
-    name.includes('no crop') ||
-    name.includes('not crop') ||
-    name.includes('non-crop')
-  );
-}
-
-function normalizeConfidence(value: number | undefined): number {
-  if (value == null || Number.isNaN(value)) return 0;
-  // Accept 0–1 or 0–100 from the model
-  const n = value > 1 ? value / 100 : value;
-  return Math.min(1, Math.max(0, n));
-}
-
 function extractZaiResponseText(data: ZaiChatCompletionResponse): string {
   if (data?.error?.message) {
     throw new Error(data.error.message);
@@ -118,11 +82,10 @@ function buildDiagnosisFromVision(
   imageUri: string,
 ): DiagnosisOutcome {
   const confidence = normalizeConfidence(parsed.confidence);
-  const lowConfidence = confidence < 0.45;
-  const nonCrop =
-    isNonCropImage(parsed) || (confidence < 0.35 && !normalizeCropName(parsed.cropName));
+  const lowConfidence = confidence < 0.5;
+  const reject = shouldRejectAsNonCrop(parsed, confidence);
 
-  if (nonCrop) {
+  if (reject) {
     return {
       result: {
         id: generateId('diag'),
@@ -131,32 +94,29 @@ function buildDiagnosisFromVision(
         confidence,
         treatment:
           parsed.treatment?.trim() ||
-          'This does not look like a crop photo. Frame a clear shot of the affected leaf or plant in good light.',
+          'Frame a clear photo of the plant leaf, fruit, or stem in good light — not soil, tools, or people.',
         imageUri,
         scannedAt: new Date().toISOString(),
       },
-      notice: "Couldn't get a confident read — try a closer photo in better light.",
+      notice: 'No plant detected — point the camera at the affected crop.',
     };
   }
 
-  const cropName = normalizeCropName(parsed.cropName) ?? parsed.cropName?.trim() ?? 'Unknown crop';
+  const cropName = resolveVisionCropName(parsed);
+  const disease = parsed.disease?.trim() || null;
 
   return {
     result: {
       id: generateId('diag'),
       cropName,
-      disease: parsed.disease ?? null,
+      disease,
       confidence,
-      treatment:
-        parsed.treatment?.trim() ||
-        (lowConfidence
-          ? 'Try a closer photo in better light for a more accurate diagnosis.'
-          : 'Monitor the plant and scan again in a few days if symptoms persist.'),
+      treatment: buildTreatmentText(parsed, lowConfidence),
       imageUri,
       scannedAt: new Date().toISOString(),
     },
     notice: lowConfidence
-      ? "Couldn't get a confident read — try a closer photo in better light."
+      ? 'Partial match — try a closer photo of the spots or damaged area for a sharper diagnosis.'
       : undefined,
   };
 }
@@ -185,6 +145,8 @@ async function requestZaiVisionDirect(
     ZAI_CHAT_COMPLETIONS_URL,
     {
       model: ZAI_VISION_MODEL,
+      temperature: 0.25,
+      max_tokens: 1024,
       response_format: { type: 'json_object' },
       messages: [
         {
@@ -312,3 +274,6 @@ export async function fetchDiagnosisHistory(userId: string): Promise<DiagnosisRe
   const scans = await getUserCropScans(userId);
   return scans.map(scanRecordToDiagnosis);
 }
+
+// Re-export for tests or other callers
+export { buildVisionScanPrompt };

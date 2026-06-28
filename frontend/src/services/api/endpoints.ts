@@ -23,6 +23,8 @@ export const API_ENDPOINTS = {
     events: '/api/v1/calendar/events',
     eventById: (id: string) => `/api/v1/calendar/events/${id}`,
     dataset: '/api/v1/calendar/dataset', // future: bulk import from custom dataset
+    plantingGuide: '/api/v1/calendar/planting-guide',
+    careSchedule: '/api/v1/calendar/care-schedule',
   },
 
   // Weather

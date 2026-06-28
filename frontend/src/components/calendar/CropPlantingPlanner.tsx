@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -7,17 +7,26 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Input } from '../ui';
 import { FieldPicker } from '../fields/FieldPicker';
-import { CROP_PLANTING_GUIDE } from '../../data/cropPlantingGuide';
 import {
   buildPlantingSummary,
   findPlantingGuide,
-  formatDisplayDate,
+  formatCropDisplayName,
+  getQuickAccessGuides,
+  lookupLocalPlantingGuide,
   searchPlantingGuides,
 } from '../../services/calendar/plantingGuideService';
+import {
+  generatePlantingGuide,
+  loadCustomPlantingGuides,
+  refreshCustomGuideIfStale,
+  saveCustomPlantingGuide,
+} from '../../services/calendar/customPlantingGuideService';
 import type { CropPlantingGuide } from '../../data/cropPlantingGuide';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { toApiError } from '../../services/api/errors';
 
 export interface PlannerSavePayload {
   cropName: string;
@@ -30,6 +39,7 @@ export interface PlannerSavePayload {
 
 interface CropPlantingPlannerProps {
   userId: string;
+  userLocation?: string;
   onSave: (payload: PlannerSavePayload) => void;
   saving?: boolean;
 }
@@ -38,44 +48,119 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function CropPlantingPlanner({ userId, onSave, saving = false }: CropPlantingPlannerProps) {
+export function CropPlantingPlanner({
+  userId,
+  userLocation,
+  onSave,
+  saving = false,
+}: CropPlantingPlannerProps) {
   const [query, setQuery] = useState('');
   const [selectedGuide, setSelectedGuide] = useState<CropPlantingGuide | null>(null);
+  const [customGuides, setCustomGuides] = useState<CropPlantingGuide[]>([]);
   const [plantDate, setPlantDate] = useState(todayIso());
   const [fieldId, setFieldId] = useState<string | null>(null);
   const [fieldName, setFieldName] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const suggestions = useMemo(() => searchPlantingGuides(query).slice(0, 8), [query]);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const guides = await loadCustomPlantingGuides(userId);
+      if (!active) return;
 
-  const activeGuide = selectedGuide ?? findPlantingGuide(query);
+      const refreshed = await Promise.all(
+        guides.map(async (guide) => {
+          const updated = await refreshCustomGuideIfStale(userId, guide.name, userLocation);
+          return updated ?? guide;
+        }),
+      );
+
+      if (active) setCustomGuides(refreshed);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [userId, userLocation]);
+
+  const suggestions = useMemo(
+    () => searchPlantingGuides(query, customGuides).slice(0, 6),
+    [query, customGuides],
+  );
+
+  const quickAccessCrops = useMemo(() => getQuickAccessGuides(customGuides), [customGuides]);
+
+  const activeGuide = selectedGuide ?? findPlantingGuide(query, customGuides);
   const summary = activeGuide ? buildPlantingSummary(activeGuide, plantDate) : null;
 
   const selectCrop = (guide: CropPlantingGuide) => {
     setSelectedGuide(guide);
     setQuery(guide.name);
+    setDetailsOpen(false);
   };
 
-  const handleSave = () => {
-    const cropName = (activeGuide?.name ?? query).trim();
+  const persistCustomGuide = useCallback(
+    async (guide: CropPlantingGuide) => {
+      const saved = await saveCustomPlantingGuide(userId, guide);
+      setCustomGuides(saved);
+      return guide;
+    },
+    [userId],
+  );
+
+  const handleGenerateGuide = async () => {
+    const cropName = query.trim();
     if (!cropName) {
-      Alert.alert('Choose a crop', 'Select a crop from the list or type its name.');
+      Alert.alert('Enter a crop', 'Type the crop you want a guide for.');
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const guide = await generatePlantingGuide(cropName, userLocation);
+      await persistCustomGuide(guide);
+      setSelectedGuide(guide);
+      setQuery(guide.name);
+    } catch (err) {
+      Alert.alert('Could not generate guide', toApiError(err).message);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSave = async () => {
+    const cropName = formatCropDisplayName(activeGuide?.name ?? query);
+    if (!cropName) {
+      Alert.alert('Choose a crop', 'Select or type a crop name.');
       return;
     }
     if (!plantDate.trim()) {
-      Alert.alert('Plant date required', 'Enter when you plan to plant (YYYY-MM-DD).');
+      Alert.alert('Plant date required', 'Enter when you plan to plant.');
       return;
     }
 
-    const harvestDate = activeGuide
-      ? buildPlantingSummary(activeGuide, plantDate).harvestDate ?? ''
-      : '';
+    let guide = activeGuide ?? lookupLocalPlantingGuide(cropName);
+    if (!guide) {
+      setGenerating(true);
+      try {
+        guide = await generatePlantingGuide(cropName, userLocation);
+        await persistCustomGuide(guide);
+        setSelectedGuide(guide);
+        setQuery(guide.name);
+      } catch (err) {
+        Alert.alert('Could not create guide', toApiError(err).message);
+        setGenerating(false);
+        return;
+      }
+      setGenerating(false);
+    }
 
-    const notes = activeGuide
-      ? `Soil: ${activeGuide.soilType} (${activeGuide.soilPh}). Irrigation: ${activeGuide.irrigation}.`
-      : '';
+    const harvestDate = buildPlantingSummary(guide, plantDate).harvestDate ?? '';
+    const notes = `Soil: ${guide.soilType} (${guide.soilPh}). Irrigation: ${guide.irrigation}.`;
 
     onSave({
-      cropName,
+      cropName: guide.name,
       plantDate: plantDate.trim(),
       harvestDate,
       fieldId,
@@ -85,38 +170,24 @@ export function CropPlantingPlanner({ userId, onSave, saving = false }: CropPlan
   };
 
   return (
-    <Card variant="highlight" style={styles.card}>
-      <Text style={styles.title}>What do you want to plant?</Text>
-      <Text style={styles.subtitle}>
-        Pick a crop — we’ll show the best season, soil, irrigation, and harvest time.
-      </Text>
-
+    <Card variant="elevated" style={styles.card}>
       <Input
-        label="Crop"
+        label="Crop name"
         value={query}
         onChangeText={(t) => {
           setQuery(t);
           setSelectedGuide(null);
+          setDetailsOpen(false);
         }}
-        placeholder="e.g. Tomato, Sweetcorn, Lettuce"
+        placeholder="Tomato, Mahangu, Mango…"
       />
-
-      {query && !activeGuide && suggestions.length > 0 ? (
-        <View style={styles.suggestions}>
-          {suggestions.map((g) => (
-            <Pressable key={g.id} style={styles.suggestionChip} onPress={() => selectCrop(g)}>
-              <Text style={styles.suggestionText}>{g.name}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.cropRow}
       >
-        {CROP_PLANTING_GUIDE.slice(0, 10).map((g) => (
+        {quickAccessCrops.map((g) => (
           <Pressable
             key={g.id}
             style={[styles.cropChip, activeGuide?.id === g.id && styles.cropChipActive]}
@@ -129,41 +200,74 @@ export function CropPlantingPlanner({ userId, onSave, saving = false }: CropPlan
         ))}
       </ScrollView>
 
+      {query && !activeGuide && suggestions.length > 0 ? (
+        <View style={styles.suggestions}>
+          {suggestions.map((g) => (
+            <Pressable key={g.id} style={styles.suggestionChip} onPress={() => selectCrop(g)}>
+              <Text style={styles.suggestionText}>{g.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
       {activeGuide && summary ? (
         <View style={styles.guideBox}>
-          <View style={styles.seasonRow}>
-            <Text style={styles.guideHeading}>{activeGuide.name}</Text>
-            <View style={[styles.badge, summary.inSeason ? styles.badgeGood : styles.badgeWait]}>
-              <Text style={styles.badgeText}>
-                {summary.inSeason ? 'Good season now' : 'Check season'}
-              </Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryTop}>
+              <Text style={styles.guideHeading}>{activeGuide.name}</Text>
+              <View style={[styles.badge, summary.inSeason ? styles.badgeGood : styles.badgeWait]}>
+                <Text style={styles.badgeText}>
+                  {summary.inSeason ? 'In season' : 'Off season'}
+                </Text>
+              </View>
             </View>
+            <Text style={styles.summaryLine}>
+              Plant: {activeGuide.bestPlantingMonths}
+            </Text>
+            <Text style={styles.summaryLine}>
+              Maturity: {activeGuide.maturityDaysRange}
+            </Text>
           </View>
 
-          <GuideRow label="Best time to plant" value={activeGuide.bestPlantingMonths} />
-          <GuideRow label="Days to harvest" value={activeGuide.maturityDaysRange} />
-          <GuideRow label="Best soil" value={`${activeGuide.soilType} · ${activeGuide.soilPh}`} />
-          <GuideRow label="Irrigation" value={activeGuide.irrigation} />
-          <GuideRow label="Water needs" value={activeGuide.waterNote} />
+          <Pressable style={styles.detailsToggle} onPress={() => setDetailsOpen((v) => !v)}>
+            <Text style={styles.detailsToggleText}>
+              {detailsOpen ? 'Hide' : 'Show'} soil & irrigation details
+            </Text>
+            <Ionicons
+              name={detailsOpen ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={colors.primary}
+            />
+          </Pressable>
 
-          <Input
-            label="Your plant date"
-            value={plantDate}
-            onChangeText={setPlantDate}
-            placeholder="YYYY-MM-DD"
-          />
+          {detailsOpen ? (
+            <View style={styles.detailsBox}>
+              <GuideRow label="Soil" value={`${activeGuide.soilType} · ${activeGuide.soilPh}`} />
+              <GuideRow label="Irrigation" value={activeGuide.irrigation} />
+              <GuideRow label="Water" value={activeGuide.waterNote} />
+            </View>
+          ) : null}
+
+          <View style={styles.dateRow}>
+            <View style={styles.dateInput}>
+              <Input
+                label="Plant date"
+                value={plantDate}
+                onChangeText={setPlantDate}
+                placeholder="YYYY-MM-DD"
+              />
+            </View>
+            <Pressable style={styles.todayBtn} onPress={() => setPlantDate(todayIso())}>
+              <Text style={styles.todayBtnText}>Today</Text>
+            </Pressable>
+          </View>
 
           {summary.harvestDate ? (
             <View style={styles.harvestBanner}>
               <Text style={styles.harvestLabel}>Expected harvest</Text>
               <Text style={styles.harvestValue}>{summary.harvestLabel}</Text>
-              <Text style={styles.harvestHint}>
-                Based on {activeGuide.maturityDays} days from {formatDisplayDate(plantDate)}
-              </Text>
             </View>
-          ) : (
-            <GuideRow label="Harvest window" value={activeGuide.harvestWindow} />
-          )}
+          ) : null}
 
           <FieldPicker
             userId={userId}
@@ -172,34 +276,31 @@ export function CropPlantingPlanner({ userId, onSave, saving = false }: CropPlan
               setFieldId(id);
               setFieldName(field?.name ?? '');
             }}
-            label="Which field?"
+            label="Field (optional)"
           />
 
-          <Button title="Add to my calendar" onPress={handleSave} loading={saving} fullWidth />
-        </View>
-      ) : query.trim() ? (
-        <Card style={styles.noGuide}>
-          <Text style={styles.noGuideText}>
-            No guide for “{query.trim()}” — you can still add it manually below.
-          </Text>
-          <Input label="Plant date" value={plantDate} onChangeText={setPlantDate} placeholder="YYYY-MM-DD" />
-          <FieldPicker
-            userId={userId}
-            value={fieldId}
-            onChange={(id, field) => {
-              setFieldId(id);
-              setFieldName(field?.name ?? '');
-            }}
-          />
           <Button
-            title="Add custom crop"
-            variant="outline"
+            title="Add to calendar"
             onPress={handleSave}
-            loading={saving}
+            loading={saving || generating}
             fullWidth
           />
-        </Card>
-      ) : null}
+        </View>
+      ) : query.trim() ? (
+        <View style={styles.noGuide}>
+          <Text style={styles.noGuideText}>
+            No guide for “{query.trim()}” in our library yet.
+          </Text>
+          <Button
+            title="Generate guide"
+            onPress={handleGenerateGuide}
+            loading={generating}
+            fullWidth
+          />
+        </View>
+      ) : (
+        <Text style={styles.hint}>Pick a crop above or type a name to get started.</Text>
+      )}
     </Card>
   );
 }
@@ -215,46 +316,76 @@ function GuideRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   card: { marginBottom: spacing.lg },
-  title: { ...typography.h3, color: colors.primaryDark, marginBottom: spacing.xs },
-  subtitle: { ...typography.caption, marginBottom: spacing.md, lineHeight: 18 },
-  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  suggestionChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  suggestionText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
-  cropRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  cropRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
   cropChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
   },
   cropChipActive: { backgroundColor: colors.surfaceAlt, borderColor: colors.primary },
-  cropChipText: { ...typography.caption, color: colors.textSecondary },
+  cropChipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
   cropChipTextActive: { color: colors.primary, fontWeight: '700' },
+  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  suggestionChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primarySoft,
+    borderRadius: borderRadius.full,
+  },
+  suggestionText: { ...typography.caption, color: colors.primaryDark, fontWeight: '600' },
+  hint: { ...typography.caption, textAlign: 'center', marginTop: spacing.sm },
   guideBox: { marginTop: spacing.sm },
-  seasonRow: {
+  summaryCard: {
+    backgroundColor: colors.primarySoft,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  summaryTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
     gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  guideHeading: { ...typography.h3, fontSize: 18, color: colors.primary, flex: 1 },
+  guideHeading: { ...typography.h3, fontSize: 18, color: colors.primaryDark, flex: 1 },
+  summaryLine: { ...typography.bodySmall, lineHeight: 20, marginTop: 2 },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.sm },
   badgeGood: { backgroundColor: colors.surfaceAlt },
-  badgeWait: { backgroundColor: '#FFF8E7' },
+  badgeWait: { backgroundColor: colors.warningSurface },
   badgeText: { ...typography.caption, fontWeight: '700', color: colors.primaryDark },
+  detailsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  detailsToggleText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
+  detailsBox: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
   guideRow: { marginBottom: spacing.sm },
   guideLabel: { ...typography.caption, fontWeight: '700', color: colors.textMuted },
   guideValue: { ...typography.bodySmall, lineHeight: 20, marginTop: 2 },
+  dateRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginBottom: spacing.sm },
+  dateInput: { flex: 1 },
+  todayBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    marginBottom: spacing.xs,
+  },
+  todayBtnText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
   harvestBanner: {
     backgroundColor: colors.surfaceAlt,
     padding: spacing.md,
@@ -265,7 +396,6 @@ const styles = StyleSheet.create({
   },
   harvestLabel: { ...typography.caption, fontWeight: '700' },
   harvestValue: { ...typography.h3, color: colors.primaryDark, marginTop: 4 },
-  harvestHint: { ...typography.caption, marginTop: 4, fontStyle: 'italic' },
-  noGuide: { marginTop: spacing.sm, backgroundColor: colors.surface },
-  noGuideText: { ...typography.bodySmall, marginBottom: spacing.md, lineHeight: 20 },
+  noGuide: { marginTop: spacing.md, gap: spacing.sm },
+  noGuideText: { ...typography.bodySmall, lineHeight: 20, textAlign: 'center' },
 });

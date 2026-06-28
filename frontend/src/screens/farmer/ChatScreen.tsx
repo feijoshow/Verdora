@@ -134,7 +134,10 @@ export function ChatScreen() {
 
   if (loading) {
     return (
-      <ScreenLoader header={<ScreenHeader title="Farming Assistant" />} label="Loading your chat…" />
+      <ScreenLoader
+        header={<ScreenHeader banner title="Chat" />}
+        label="Loading your chat…"
+      />
     );
   }
 
@@ -142,7 +145,7 @@ export function ChatScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.body}>
         <View style={styles.headerWrap}>
-          <ScreenHeader title="Farming Assistant" />
+          <ScreenHeader banner title="Chat" />
         </View>
 
         <FlatList
@@ -220,9 +223,6 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   headerWrap: {
     paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
   },
   list: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.md, paddingBottom: spacing.sm, flexGrow: 1 },

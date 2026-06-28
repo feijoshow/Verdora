@@ -8,26 +8,30 @@ export const colors = {
   primaryLight: '#52B788',
   secondary: '#D4A373',
   secondaryDark: '#BC6C25',
-  background: '#F8F9F5',
+  background: '#F0F4F1',
   surface: '#FFFFFF',
-  surfaceAlt: '#E9F5EC',
-  text: '#1B1B1B',
-  textSecondary: '#5C5C5C',
-  textMuted: '#8A8A8A',
-  border: '#D8E2DC',
+  surfaceAlt: '#E8F3EC',
+  text: '#1A1F1C',
+  textSecondary: '#5A6560',
+  textMuted: '#8E9994',
+  border: '#E2EBE6',
   error: '#C1121F',
   warning: '#E9C46A',
   success: '#40916C',
   white: '#FFFFFF',
   black: '#000000',
   overlay: 'rgba(27, 67, 50, 0.6)',
-  scrimLight: 'rgba(0, 0, 0, 0.15)',
+  scrimLight: 'rgba(0, 0, 0, 0.12)',
   errorSurface: '#FDE8E8',
   warningSurface: '#FFF8E7',
-  /** Soft green wash for hero bands and chips */
   primarySoft: '#E8F5EE',
-  /** User chat bubble accent */
   primaryMuted: '#40916C',
+  /** Action button tints */
+  actionScan: '#2D6A4F',
+  actionPlant: '#40916C',
+  actionWeather: '#BC6C25',
+  actionChat: '#1B4332',
+  actionLibrary: '#52796F',
 };
 
 export const spacing = {
@@ -54,27 +58,26 @@ export const typography = {
   body: { fontSize: 16, fontWeight: '400' as const, color: colors.text },
   bodySmall: { fontSize: 14, fontWeight: '400' as const, color: colors.textSecondary },
   caption: { fontSize: 12, fontWeight: '400' as const, color: colors.textMuted },
-  /** Uppercase section labels (Hub, Calendar, etc.) */
+  /** Friendly section headings — no shouty uppercase */
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    color: colors.textMuted,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.8,
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: colors.text,
+    letterSpacing: -0.2,
   },
 };
 
 export const shadows = {
   card: Platform.select({
     web: {
-      boxShadow: '0 2px 12px rgba(27, 67, 50, 0.08)',
+      boxShadow: '0 4px 20px rgba(27, 67, 50, 0.06)',
     },
     default: {
       shadowColor: colors.primaryDark,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 10,
-      elevation: 3,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 16,
+      elevation: 2,
     },
   })!,
   tabBar: Platform.select({
