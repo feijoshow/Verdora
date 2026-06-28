@@ -134,11 +134,7 @@ export function PlantationCalendarScreen() {
           />
         }
       >
-        <ScreenHeader
-          banner
-          title="Planting Guide"
-          subtitle="Choose a crop — see soil, irrigation & harvest timing"
-        />
+        <ScreenHeader title="Calendar" />
 
         {user ? (
           <CropPlantingPlanner

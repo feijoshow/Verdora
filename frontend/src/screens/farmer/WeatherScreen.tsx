@@ -78,14 +78,6 @@ export function WeatherScreen() {
     loadWeather();
   }, [loadWeather]);
 
-  const subtitle = selectedField
-    ? selectedField.latitude != null
-      ? `Micro-forecast for ${selectedField.name}`
-      : `Forecast for ${selectedField.name} (farm location)`
-    : displayLocation
-      ? `Live data for ${displayLocation}`
-      : 'Set your location in Profile for local forecasts';
-
   return (
     <ScreenWrapper
       refreshControl={
@@ -97,7 +89,7 @@ export function WeatherScreen() {
         />
       }
     >
-      <ScreenHeader banner title="Weather" subtitle={subtitle} />
+      <ScreenHeader title="Weather" subtitle={displayLocation} />
 
       {user ? (
         <FieldPicker

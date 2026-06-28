@@ -60,7 +60,7 @@ export function FarmerTabNavigator() {
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginBottom: 2, letterSpacing: 0.2 },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Hub' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
       <Tab.Screen name="Scanner" component={CropScannerScreen} options={{ title: 'Scan' }} />
       <Tab.Screen name="Calendar" component={PlantationCalendarScreen} options={{ title: 'Calendar' }} />
       <Tab.Screen name="Weather" component={WeatherScreen} options={{ title: 'Weather' }} />

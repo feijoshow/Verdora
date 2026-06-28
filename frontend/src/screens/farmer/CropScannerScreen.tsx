@@ -4,6 +4,7 @@ import {
   Alert,
   Image,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -13,8 +14,9 @@ import * as ImagePicker from 'expo-image-picker';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
-import { Button, InlineLoader, ScreenWrapper, SectionLabel } from '../../components/ui';
+import { Button, InlineLoader, ScreenWrapper } from '../../components/ui';
 import { DiagnosisHistoryList } from '../../components/scanner/DiagnosisHistoryList';
 import { useAuth } from '../../context/AuthContext';
 import { useDiagnosis } from '../../context/DiagnosisContext';
@@ -48,6 +50,7 @@ export function CropScannerScreen({ navigation }: Props) {
   const [cameraReady, setCameraReady] = useState(false);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [selectedField, setSelectedField] = useState<FarmField | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const { user } = useAuth();
   const { history, addDiagnosis } = useDiagnosis();
   const { showWarning, showInfo } = useFeedback();
@@ -81,15 +84,23 @@ export function CropScannerScreen({ navigation }: Props) {
           ...result,
           fieldId: selectedField?.id,
           fieldName: selectedField?.name,
+          imageUri: result.imageUri ?? uri,
         };
-        await addDiagnosis(tagged, selectedField ?? undefined);
-        if (selectedField) await setLastSelectedFieldId(user.id, selectedField.id);
+
+        // Show results immediately — don't block on storage/sync.
+        setPreviewUri(null);
+        navigation.navigate('DiagnosisResults', { result: tagged });
+
+        addDiagnosis(tagged, selectedField ?? undefined).catch(() => {
+          showWarning('Scan saved locally, but cloud sync failed. Results are still shown.');
+        });
+        if (selectedField) {
+          setLastSelectedFieldId(user.id, selectedField.id).catch(() => undefined);
+        }
         if (notice) {
           if (result.confidence < 0.45) showWarning(notice);
           else showInfo(notice);
         }
-        navigation.navigate('DiagnosisResults', { result: tagged });
-        setPreviewUri(null);
       } catch (error) {
         Alert.alert(
           'Analysis failed',
@@ -166,11 +177,9 @@ export function CropScannerScreen({ navigation }: Props) {
 
   return (
     <ScreenWrapper padded={false}>
-      <ScreenHeader
-        banner
-        title="Crop Scanner"
-        subtitle="Tag scans to a field — add plots in Profile first"
-      />
+      <View style={styles.header}>
+        <ScreenHeader title="Crop Scanner" />
+      </View>
 
       {user ? (
         <View style={styles.fieldPicker}>
@@ -181,7 +190,7 @@ export function CropScannerScreen({ navigation }: Props) {
               setSelectedFieldId(id);
               setSelectedField(field);
             }}
-            label="Scan this field"
+            label="Field (optional)"
           />
         </View>
       ) : null}
@@ -194,13 +203,12 @@ export function CropScannerScreen({ navigation }: Props) {
             <View style={styles.analyzingOverlay}>
               <ActivityIndicator size="large" color={colors.white} />
               <Text style={styles.analyzingText}>{analysisStage}</Text>
-              <Text style={styles.analyzingHint}>This usually takes a few seconds</Text>
             </View>
           </View>
         ) : Platform.OS === 'web' ? (
           <View style={styles.webPlaceholder}>
             <Text style={styles.webEmoji}>📷</Text>
-            <Text style={styles.webHint}>Camera preview is available on mobile. Use gallery upload below.</Text>
+            <Text style={styles.webHint}>Use gallery upload on web</Text>
           </View>
         ) : (
           <CameraView
@@ -211,7 +219,6 @@ export function CropScannerScreen({ navigation }: Props) {
           >
             <View style={styles.frameOverlay}>
               <View style={styles.frame} />
-              <Text style={styles.frameHint}>Align the affected leaf or plant in the frame</Text>
             </View>
           </CameraView>
         )}
@@ -237,21 +244,36 @@ export function CropScannerScreen({ navigation }: Props) {
         />
       </View>
 
-      {/* Diagnosis history */}
-      <View style={styles.historySection}>
-        <SectionLabel style={styles.historyLabel}>Recent diagnoses</SectionLabel>
-        <DiagnosisHistoryList items={history} onPressItem={openHistoryItem} />
-      </View>
+      {history.length > 0 ? (
+        <View style={styles.historySection}>
+          <Pressable
+            style={styles.historyToggle}
+            onPress={() => setShowHistory((v) => !v)}
+          >
+            <Text style={styles.historyToggleText}>
+              Recent scans ({history.length})
+            </Text>
+            <Ionicons
+              name={showHistory ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.textMuted}
+            />
+          </Pressable>
+          {showHistory ? (
+            <DiagnosisHistoryList items={history} onPressItem={openHistoryItem} />
+          ) : null}
+        </View>
+      ) : null}
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: spacing.md, marginTop: spacing.md, marginBottom: spacing.md },
+  header: { paddingHorizontal: spacing.md, marginTop: spacing.sm },
   title: { ...typography.h2, color: colors.primary },
   subtitle: { ...typography.bodySmall, marginTop: spacing.xs },
   cameraContainer: {
-    height: Platform.OS === 'web' ? 280 : 340,
+    height: Platform.OS === 'web' ? 260 : 300,
     marginHorizontal: spacing.md,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
@@ -272,13 +294,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     borderStyle: 'dashed',
   },
-  frameHint: {
-    ...typography.caption,
-    color: colors.white,
-    marginTop: spacing.md,
-    textAlign: 'center',
-    paddingHorizontal: spacing.lg,
-  },
   previewWrap: { flex: 1, position: 'relative' },
   preview: { width: '100%', height: '100%', resizeMode: 'cover' },
   analyzingOverlay: {
@@ -288,11 +303,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   analyzingText: { ...typography.body, color: colors.white, marginTop: spacing.md },
-  analyzingHint: { ...typography.caption, color: colors.white, marginTop: spacing.xs, opacity: 0.9 },
   actions: { paddingHorizontal: spacing.md, marginTop: spacing.md, gap: spacing.sm },
-  fieldPicker: { paddingHorizontal: spacing.md, marginTop: spacing.sm },
-  historySection: { paddingHorizontal: spacing.md, marginTop: spacing.lg },
-  historyLabel: { marginTop: 0 },
+  fieldPicker: { paddingHorizontal: spacing.md, marginTop: spacing.xs },
+  historySection: { paddingHorizontal: spacing.md, marginTop: spacing.md, marginBottom: spacing.lg },
+  historyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  historyToggleText: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary },
   divider: { height: spacing.md },
   webPlaceholder: {
     flex: 1,

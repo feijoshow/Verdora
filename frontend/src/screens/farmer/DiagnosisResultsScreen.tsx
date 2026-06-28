@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
-import { Button, Card, ScreenWrapper } from '../../components/ui';
+import { Button, Card, EmptyState, ScreenWrapper } from '../../components/ui';
 import { ConfidenceBar } from '../../components/scanner/ConfidenceBar';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 import type { FarmerStackParamList } from '../../navigation/types';
@@ -10,7 +10,21 @@ import type { FarmerStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<FarmerStackParamList, 'DiagnosisResults'>;
 
 export function DiagnosisResultsScreen({ navigation, route }: Props) {
-  const { result } = route.params;
+  const result = route.params?.result;
+
+  if (!result) {
+    return (
+      <ScreenWrapper centerContent scrollable={false}>
+        <ScreenHeader title="Diagnosis Results" showBack />
+        <EmptyState
+          message="No scan results to show. Try scanning again."
+          variant="muted"
+        />
+        <Button title="Back to scanner" onPress={() => navigation.goBack()} fullWidth />
+      </ScreenWrapper>
+    );
+  }
+
   const isHealthy = !result.disease;
 
   return (
@@ -32,7 +46,7 @@ export function DiagnosisResultsScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        <Text style={styles.label}>Crop identified</Text>
+        <Text style={styles.label}>Crop</Text>
         <Text style={styles.cropName}>{result.cropName}</Text>
 
         {result.fieldName ? (
@@ -49,7 +63,7 @@ export function DiagnosisResultsScreen({ navigation, route }: Props) {
 
         <ConfidenceBar confidence={result.confidence} />
 
-        <Text style={styles.label}>Suggested treatment</Text>
+        <Text style={styles.label}>Treatment</Text>
         <Text style={styles.treatment}>{result.treatment}</Text>
 
         <Text style={styles.timestamp}>

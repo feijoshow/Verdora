@@ -134,14 +134,7 @@ export function ChatScreen() {
 
   if (loading) {
     return (
-      <ScreenLoader
-        header={
-          <>
-            <ScreenHeader title="Farming Assistant" subtitle="Answers based on your real farm data" />
-          </>
-        }
-        label="Loading your chat…"
-      />
+      <ScreenLoader header={<ScreenHeader title="Farming Assistant" />} label="Loading your chat…" />
     );
   }
 
@@ -149,10 +142,7 @@ export function ChatScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.body}>
         <View style={styles.headerWrap}>
-          <ScreenHeader
-            title="Farming Assistant"
-            subtitle="Powered by your farm profile & crop data"
-          />
+          <ScreenHeader title="Farming Assistant" />
         </View>
 
         <FlatList
@@ -176,7 +166,6 @@ export function ChatScreen() {
 
         {showPrompts ? (
           <View style={styles.promptsWrap}>
-            <Text style={styles.promptsLabel}>Quick questions</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
