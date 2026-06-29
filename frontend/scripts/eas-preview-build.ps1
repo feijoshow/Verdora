@@ -1,6 +1,8 @@
 # Verdora - EAS preview APK build (run from frontend/)
 # Requires: eas login (or EXPO_TOKEN env var)
 # Usage: npm run eas:preview
+#
+# Set VERDORA_API_URL to your Render service URL, or copy .env.production.example → .env.production
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot\..
@@ -13,6 +15,27 @@ function Invoke-Eas {
   $code = $LASTEXITCODE
   $ErrorActionPreference = $prev
   if ($code -ne 0) { throw "eas-cli failed: eas $($Args -join ' ')" }
+}
+
+function Read-DotEnvValue {
+  param([string]$Path, [string]$Key)
+  if (-not (Test-Path $Path)) { return $null }
+  foreach ($line in Get-Content $Path) {
+    if ($line -match "^\s*#") { continue }
+    if ($line -match "^\s*$Key\s*=\s*(.*)\s*$") {
+      return $matches[1].Trim().Trim('"').Trim("'")
+    }
+  }
+  return $null
+}
+
+function Resolve-ProductionApiUrl {
+  if ($env:VERDORA_API_URL) { return $env:VERDORA_API_URL.TrimEnd('/') }
+  $fromFile = Read-DotEnvValue -Path (Join-Path $PWD ".env.production") -Key "EXPO_PUBLIC_AI_API_URL"
+  if ($fromFile -and $fromFile -notmatch 'localhost|127\.0\.0\.1') {
+    return $fromFile.TrimEnd('/')
+  }
+  return $null
 }
 
 Write-Host "==> Checking EAS login..."
@@ -39,9 +62,17 @@ Write-Host "==> Pushing .env to EAS preview environment..."
 Invoke-Eas env:push preview --path .env --force
 
 Write-Host "==> Removing localhost AI proxy from preview (not usable on phones)..."
-Invoke-Eas env:delete preview --variable-name EXPO_PUBLIC_AI_API_URL --non-interactive
+Invoke-Eas env:delete preview --variable-name EXPO_PUBLIC_AI_API_URL --non-interactive 2>$null
 
-# Remove local native folders — EAS prebuilds on the server; uploading android/ breaks package name
+$productionApi = Resolve-ProductionApiUrl
+if ($productionApi) {
+  Write-Host "==> Setting EXPO_PUBLIC_AI_API_URL for preview APK: $productionApi"
+  Invoke-Eas env:create preview --name EXPO_PUBLIC_AI_API_URL --value $productionApi --force --visibility plaintext --non-interactive
+} else {
+  Write-Host "==> No production API URL — preview APK will use direct EXPO_PUBLIC_ZAI_API_KEY if set."
+  Write-Host "    Set VERDORA_API_URL or create frontend/.env.production from .env.production.example"
+}
+
 Remove-Item -Recurse -Force (Join-Path $PWD "android") -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force (Join-Path $PWD "ios") -ErrorAction SilentlyContinue
 

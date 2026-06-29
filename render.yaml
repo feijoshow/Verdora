@@ -1,0 +1,30 @@
+# Render Blueprint — Verdora API (Express)
+# Dashboard: https://dashboard.render.com
+# After deploy, set EXPO_PUBLIC_AI_API_URL on EAS / Vercel to the service URL.
+
+services:
+  - type: web
+    name: verdora-api
+    runtime: node
+    rootDir: api
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: ZAI_API_KEY
+        sync: false
+      - key: XAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: "Verdora <onboarding@resend.dev>"
+      - key: CORS_ORIGINS
+        value: "http://localhost:8081,http://127.0.0.1:8081,https://verdora.vercel.app"

@@ -5,3 +5,7 @@ android/
 ios/
 dist/
 eas-build-log.txt
+.env
+.env.local
+.env.production
+.env.*.local

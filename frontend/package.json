@@ -10,6 +10,7 @@
     "ios": "expo start --offline --ios",
     "web": "expo start --offline --web",
     "typecheck": "tsc --noEmit",
+    "build:web": "expo export -p web",
     "eas:preview": "powershell -ExecutionPolicy Bypass -File scripts/eas-preview-build.ps1"
   },
   "dependencies": {

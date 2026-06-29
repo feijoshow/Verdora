@@ -28,10 +28,24 @@ const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:8081')
   .map((o) => o.trim())
   .filter(Boolean);
 
+function isAllowedCorsOrigin(origin) {
+  if (!origin) return true;
+  if (corsOrigins.includes(origin)) return true;
+  if (origin.endsWith('.vercel.app')) return true;
+  if (origin.endsWith('.onrender.com')) return true;
+  return false;
+}
+
 const app = express();
 app.use(
   cors({
-    origin: corsOrigins,
+    origin(origin, callback) {
+      if (isAllowedCorsOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   }),
