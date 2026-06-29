@@ -15,6 +15,19 @@ export interface DiagnosisResult {
   scannedAt: string;
   fieldId?: string;
   fieldName?: string;
+  /** Farmer's note before scanning — guides the vision model and follow-up chat */
+  scanPrompt?: string;
+}
+
+/** Context from a crop scan passed into follow-up chat */
+export interface ScanChatContext {
+  cropName: string;
+  disease: string | null;
+  confidence: number;
+  treatment: string;
+  scanPrompt?: string;
+  fieldName?: string;
+  scannedAt: string;
 }
 
 /** Plantation calendar event — structured for future dataset integration */

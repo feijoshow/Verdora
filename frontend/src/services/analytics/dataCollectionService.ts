@@ -8,10 +8,10 @@ import type {
   DiseaseOutbreakInsight,
   EnvironmentLogRecord,
   FarmingDataRecord,
-  LocationSegment,
   UserProfileRecord,
 } from '../../types/analytics';
 import type { DiagnosisResult, PlantingEvent, User, WeatherData } from '../../types';
+import { aggregateLocationSegments } from '../../utils/adminUserGrouping';
 import { generateId } from '../../utils/generateId';
 import { getCloudAdminInsights } from '../supabase/analyticsRepository';
 import { insertChatLog } from '../supabase/repositories/chatRepository';
@@ -307,19 +307,6 @@ function aggregateChatInsights(questions: ChatQuestionRecord[]): ChatInsight[] {
     map.set(topic, entry);
   }
   return Array.from(map.values()).sort((a, b) => b.questionCount - a.questionCount);
-}
-
-function aggregateLocationSegments(users: UserProfileRecord[]): LocationSegment[] {
-  const map = new Map<string, LocationSegment>();
-  for (const user of users) {
-    const loc = user.location ?? 'Unknown';
-    const seg = map.get(loc) ?? { location: loc, userCount: 0, farmerTypes: {} };
-    seg.userCount += 1;
-    const ft = user.farmerType ?? 'unspecified';
-    seg.farmerTypes[ft] = (seg.farmerTypes[ft] ?? 0) + 1;
-    map.set(loc, seg);
-  }
-  return Array.from(map.values()).sort((a, b) => b.userCount - a.userCount);
 }
 
 export async function getAdminDashboardInsights(): Promise<AdminDashboardInsights> {

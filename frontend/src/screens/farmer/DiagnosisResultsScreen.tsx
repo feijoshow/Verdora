@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useRef } from 'react';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
 import { Button, Card, EmptyState, MarkdownText, ScreenWrapper } from '../../components/ui';
 import { ConfidenceBar } from '../../components/scanner/ConfidenceBar';
+import { ScanFollowUpPanel } from '../../components/scanner/ScanFollowUpPanel';
 import { useTheme } from '../../context/ThemeContext';
 import { spacing, borderRadius } from '../../constants/theme';
 import type { FarmerStackParamList } from '../../navigation/types';
@@ -12,7 +13,14 @@ type Props = NativeStackScreenProps<FarmerStackParamList, 'DiagnosisResults'>;
 
 export function DiagnosisResultsScreen({ navigation, route }: Props) {
   const { colors, typography } = useTheme();
+  const scrollRef = useRef<ScrollView>(null);
   const result = route.params?.result;
+
+  const scrollToFollowUp = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  }, []);
 
   const styles = useMemo(
     () =>
@@ -53,6 +61,14 @@ export function DiagnosisResultsScreen({ navigation, route }: Props) {
         disease: { ...typography.body, fontWeight: '600', color: colors.error },
         healthyText: { color: colors.success },
         treatment: { ...typography.bodySmall, lineHeight: 22, color: colors.text },
+        scanNote: {
+          ...typography.bodySmall,
+          color: colors.textSecondary,
+          backgroundColor: colors.primarySoft,
+          padding: spacing.sm,
+          borderRadius: borderRadius.md,
+          marginBottom: spacing.sm,
+        },
         timestamp: { ...typography.caption, marginTop: spacing.lg, color: colors.textMuted },
       }),
     [colors, typography],
@@ -74,7 +90,7 @@ export function DiagnosisResultsScreen({ navigation, route }: Props) {
   const isHealthy = !result.disease;
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper keyboardAvoiding keyboardVerticalOffset={56} scrollRef={scrollRef}>
       <ScreenHeader title="Diagnosis Results" showBack />
 
       {result.imageUri ? (
@@ -102,6 +118,13 @@ export function DiagnosisResultsScreen({ navigation, route }: Props) {
           </>
         ) : null}
 
+        {result.scanPrompt ? (
+          <>
+            <Text style={styles.label}>Your scan note</Text>
+            <Text style={styles.scanNote}>“{result.scanPrompt}”</Text>
+          </>
+        ) : null}
+
         <Text style={styles.label}>Condition</Text>
         <MarkdownText
           style={[styles.disease, isHealthy && styles.healthyText]}
@@ -119,6 +142,8 @@ export function DiagnosisResultsScreen({ navigation, route }: Props) {
           Scanned {new Date(result.scannedAt).toLocaleString()}
         </Text>
       </Card>
+
+      <ScanFollowUpPanel result={result} onInputFocus={scrollToFollowUp} />
 
       <Button title="Scan another crop" onPress={() => navigation.goBack()} fullWidth />
     </ScreenWrapper>

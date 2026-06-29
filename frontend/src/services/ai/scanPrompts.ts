@@ -1,7 +1,7 @@
 /**
  * Vision scanner prompts and response normalization.
  */
-import type { User } from '../../types';
+import type { DiagnosisResult, ScanChatContext, User } from '../../types';
 import { getChatLocationLabel } from '../../utils/locationHelpers';
 import {
   GEMINI_CROP_CATALOG,
@@ -23,11 +23,15 @@ const EXTRA_SCAN_CROPS =
   'Sweet potato, Potato, Sweetcorn, Maize, Sorghum, Wheat, Barley, Sunflower, ' +
   'Pumpkin, Butternut, Spinach, Lettuce, Kale, Garlic, Ginger, Herbs';
 
-export function buildVisionScanPrompt(user: User): string {
+export function buildVisionScanPrompt(user: User, scanPrompt?: string): string {
   const location = getChatLocationLabel(user);
   const farmerCrops = user.cropsPlanted?.length
     ? user.cropsPlanted.join(', ')
     : 'not specified';
+  const farmerFocus = scanPrompt?.trim()
+    ? `\nFARMER'S FOCUS FOR THIS SCAN:\n"${scanPrompt.trim()}"\n` +
+      `Address this concern directly in your diagnosis and treatment advice while still identifying the crop and any disease accurately.\n\n`
+    : '';
 
   return (
     `You are an expert agricultural pathologist for farmers in Namibia and southern Africa.\n\n` +
@@ -50,6 +54,7 @@ export function buildVisionScanPrompt(user: User): string {
     `- Below 0.40 only if image is very blurry or plant is not visible\n\n` +
     `Known crops (prefer these names when they match): ${GEMINI_CROP_CATALOG}, ${EXTRA_SCAN_CROPS}.\n` +
     `Farmer location: ${location}. Farmer's registered crops: ${farmerCrops}.\n\n` +
+    farmerFocus +
     `${NAMIBIA_TREATMENT_HINTS}\n\n` +
     `Respond ONLY with valid JSON (no markdown):\n` +
     `{"cropName":"string","disease":"string or null if healthy","confidence":0.75,` +
@@ -119,4 +124,37 @@ export function buildTreatmentText(parsed: VisionDiagnosisPayload, lowConfidence
     return 'Try a closer photo of the affected leaf or fruit in natural light for a more accurate diagnosis.';
   }
   return 'Monitor the plant and scan again in a few days if symptoms spread.';
+}
+
+export function buildScanFollowUpPrompts(result: {
+  cropName: string;
+  disease: string | null;
+}): string[] {
+  const crop = result.cropName;
+  if (result.disease) {
+    return [
+      `What causes ${result.disease} on ${crop}?`,
+      `What is the safest treatment for ${result.disease}?`,
+      `Will ${result.disease} spread to my other crops?`,
+      `Can I still harvest this ${crop}?`,
+    ];
+  }
+  return [
+    `How do I keep my ${crop} healthy?`,
+    `What pests should I watch for on ${crop}?`,
+    `When should I scan ${crop} again?`,
+    `What nutrients does ${crop} need right now?`,
+  ];
+}
+
+export function diagnosisToScanChatContext(result: DiagnosisResult): ScanChatContext {
+  return {
+    cropName: result.cropName,
+    disease: result.disease,
+    confidence: result.confidence,
+    treatment: result.treatment,
+    scanPrompt: result.scanPrompt,
+    fieldName: result.fieldName,
+    scannedAt: result.scannedAt,
+  };
 }

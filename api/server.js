@@ -7,6 +7,8 @@ import { dirname, join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 
 import { runInsightAggregation } from './adminAggregation.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
 
 const PORT = Number(process.env.PORT) || 3001;

@@ -57,6 +57,7 @@ export function AdminInsightsCharts({ data }: AdminInsightsChartsProps) {
   const gapItems: BarChartItem[] = data.regionalIntelligence.knowledgeGaps
     .slice(0, 5)
     .map((g) => ({
+      key: g.id,
       label: g.topic,
       value: g.questionCount,
       color: colors.secondaryDark,

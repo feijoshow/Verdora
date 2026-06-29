@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   DiagnosisResult,
   PlantingEvent,
+  ScanChatContext,
   User,
   WeatherData,
 } from '../../types';
@@ -87,6 +88,7 @@ export interface PlantingRecommendation {
 export interface ChatRequest {
   message: string;
   history?: Pick<ChatMessage, 'role' | 'content'>[];
+  scanContext?: ScanChatContext;
 }
 
 export interface ChatResponse {

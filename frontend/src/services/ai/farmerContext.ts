@@ -1,4 +1,4 @@
-import type { User } from '../../types';
+import type { ScanChatContext, User } from '../../types';
 import { getChatLocationLabel } from '../../utils/locationHelpers';
 import { getUserCropScans, getUserFarmingRecords } from '../analytics/dataCollectionService';
 
@@ -68,9 +68,24 @@ export async function buildFarmerAiContext(user: User): Promise<FarmerAiContext>
   return { crops, locationLabel, scanSummary, calendarSummary, seasonNote };
 }
 
-export async function buildChatSystemPrompt(user: User): Promise<string> {
+export async function buildChatSystemPrompt(
+  user: User,
+  scanContext?: ScanChatContext,
+): Promise<string> {
   const ctx = await buildFarmerAiContext(user);
   const cropList = ctx.crops.length > 0 ? ctx.crops.join(', ') : 'none registered yet';
+
+  const scanFocus = scanContext
+    ? `\nACTIVE SCAN CONTEXT (farmer is asking follow-up questions about this scan):\n` +
+      `- Crop: ${scanContext.cropName}\n` +
+      `- Condition: ${scanContext.disease ?? 'healthy / no disease detected'}\n` +
+      `- Confidence: ${Math.round(scanContext.confidence * 100)}%\n` +
+      `- Treatment already suggested: ${scanContext.treatment}\n` +
+      (scanContext.fieldName ? `- Field: ${scanContext.fieldName}\n` : '') +
+      (scanContext.scanPrompt ? `- Farmer's scan note: "${scanContext.scanPrompt}"\n` : '') +
+      `- Scanned: ${new Date(scanContext.scannedAt).toLocaleString()}\n` +
+      `Answer follow-up questions about THIS scan specifically. Reference the crop, disease/pest, and treatment above.\n\n`
+    : '';
 
   return (
     `You are Verdora, a farming assistant for Namibian small-scale and commercial farmers.\n` +
@@ -81,6 +96,7 @@ export async function buildChatSystemPrompt(user: User): Promise<string> {
     `Recent scans: ${ctx.scanSummary}\n` +
     `Calendar: ${ctx.calendarSummary}\n` +
     `Season: ${ctx.seasonNote}\n\n` +
+    scanFocus +
     `Rules:\n` +
     `- Use the farmer's actual crops and location in every answer.\n` +
     `- Prefer low-cost, locally available interventions (neem, crop rotation, mulching, drip irrigation).\n` +

@@ -177,7 +177,7 @@ function parseChatResponse(data: ChatCompletionResponse): string {
 }
 
 async function buildChatMessages(request: ChatRequest, user: User) {
-  const systemPrompt = await buildChatSystemPrompt(user);
+  const systemPrompt = await buildChatSystemPrompt(user, request.scanContext);
   return [
     { role: 'system' as const, content: systemPrompt },
     ...(request.history ?? []).map((m) => ({
@@ -289,7 +289,7 @@ async function grokSendMessage(request: ChatRequest, user: User): Promise<ChatRe
 }
 
 async function apiSendMessage(request: ChatRequest, user: User): Promise<ChatResponse> {
-  const systemPrompt = await buildChatSystemPrompt(user);
+  const systemPrompt = await buildChatSystemPrompt(user, request.scanContext);
   return aiApiPost<ChatResponse>(
     API_ENDPOINTS.chat.message,
     { ...request, systemPrompt },

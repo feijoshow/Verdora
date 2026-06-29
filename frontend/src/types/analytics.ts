@@ -143,8 +143,12 @@ export interface RegionalIntelligence {
 
 export interface LocationSegment {
   location: string;
+  /** Normalized region key — merges duplicate region labels */
+  regionKey?: string;
   userCount: number;
   farmerTypes: Record<string, number>;
+  /** Towns represented in this region */
+  towns?: string[];
 }
 
 /** Aggregated admin dashboard payload */

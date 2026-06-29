@@ -173,7 +173,11 @@ async function requestZaiVisionDirect(
   return data;
 }
 
-async function zaiDiagnoseCropDirect(imageUri: string, user: User): Promise<DiagnosisOutcome> {
+async function zaiDiagnoseCropDirect(
+  imageUri: string,
+  user: User,
+  scanPrompt?: string,
+): Promise<DiagnosisOutcome> {
   const { base64, mimeType } = await readImageForVision(imageUri);
   if (!base64 || base64.length < 256) {
     throw new Error(
@@ -181,7 +185,7 @@ async function zaiDiagnoseCropDirect(imageUri: string, user: User): Promise<Diag
     );
   }
 
-  const prompt = buildVisionScanPrompt(user);
+  const prompt = buildVisionScanPrompt(user, scanPrompt);
   const data = await requestZaiVisionDirect(mimeType, base64, prompt);
 
   if (__DEV__) {
@@ -197,7 +201,11 @@ async function zaiDiagnoseCropDirect(imageUri: string, user: User): Promise<Diag
   return buildDiagnosisFromVision(parsed, imageUri);
 }
 
-async function apiDiagnoseCrop(imageUri: string, user: User): Promise<DiagnosisOutcome> {
+async function apiDiagnoseCrop(
+  imageUri: string,
+  user: User,
+  scanPrompt?: string,
+): Promise<DiagnosisOutcome> {
   const { base64, mimeType } = await readImageForVision(imageUri);
   if (!base64 || base64.length < 256) {
     throw new Error(
@@ -205,7 +213,7 @@ async function apiDiagnoseCrop(imageUri: string, user: User): Promise<DiagnosisO
     );
   }
 
-  const prompt = buildVisionScanPrompt(user);
+  const prompt = buildVisionScanPrompt(user, scanPrompt);
   const result = await aiApiPost<DiagnoseCropResponse>(
     API_ENDPOINTS.crops.diagnose,
     { imageBase64: base64, mimeType, prompt },
@@ -218,10 +226,11 @@ async function apiDiagnoseCrop(imageUri: string, user: User): Promise<DiagnosisO
 export async function diagnoseCropImage(
   imageUri: string,
   user: User,
+  options?: { scanPrompt?: string },
 ): Promise<DiagnosisOutcome> {
   if (hasAiApi) {
     try {
-      return await apiDiagnoseCrop(imageUri, user);
+      return await apiDiagnoseCrop(imageUri, user, options?.scanPrompt);
     } catch (error) {
       if (__DEV__) {
         console.warn('[Scan API] failed:', toApiError(error).message);
@@ -232,7 +241,7 @@ export async function diagnoseCropImage(
 
   if (env.zaiApiKey) {
     try {
-      return await zaiDiagnoseCropDirect(imageUri, user);
+      return await zaiDiagnoseCropDirect(imageUri, user, options?.scanPrompt);
     } catch (error) {
       if (__DEV__) {
         console.warn('[Z.ai scan] failed:', toApiError(error).message);

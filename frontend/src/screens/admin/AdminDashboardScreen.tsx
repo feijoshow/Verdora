@@ -10,8 +10,11 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Card, ScreenWrapper, Button, EmptyState, ScreenLoader } from '../../components/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Card, ScreenWrapper, EmptyState, ScreenLoader } from '../../components/ui';
 import { AdminTabBar, type AdminTab } from '../../components/admin/AdminTabBar';
+import { AdminFloatingActionBar } from '../../components/admin/AdminFloatingActionBar';
+import { adminActionBarBottomInset } from '../../components/admin/adminActionBarConstants';
 import { useAuth } from '../../context/AuthContext';
 import { exportUserReport, getAdminDashboard } from '../../services/api/adminService';
 import { isSupabaseConfigured } from '../../services/supabase/client';
@@ -20,7 +23,9 @@ import { DiseaseAlertCard } from '../../components/intelligence/DiseaseAlertCard
 import { KnowledgeGapCard } from '../../components/intelligence/KnowledgeGapCard';
 import { PlantingInsightCard } from '../../components/intelligence/PlantingInsightCard';
 import { AdminInsightsCharts } from '../../components/admin/AdminInsightsCharts';
+import { AdminUsersPanel } from '../../components/admin/AdminUsersPanel';
 import { regenerateInsights } from '../../services/admin/adminOperationsService';
+import { printInsightsReport } from '../../services/export/insightsPrintService';
 import type { AdminDashboardInsights } from '../../types/analytics';
 import type { AdminStackParamList } from '../../navigation/types';
 import { useTheme } from '../../context/ThemeContext';
@@ -28,8 +33,10 @@ import { spacing, borderRadius } from '../../constants/theme';
 
 export function AdminDashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AdminStackParamList>>();
+  const insets = useSafeAreaInsets();
   const { logout } = useAuth();
   const { colors, typography } = useTheme();
+  const actionBarInset = adminActionBarBottomInset(Math.max(insets.bottom, Platform.OS === 'web' ? 12 : 8));
   const [tab, setTab] = useState<AdminTab>('overview');
   const [data, setData] = useState<AdminDashboardInsights | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,13 +85,7 @@ export function AdminDashboardScreen() {
         alertTitle: { ...typography.bodySmall, fontWeight: '700', color: colors.text },
         alertBody: { ...typography.bodySmall, marginTop: spacing.xs, color: colors.text },
         link: { ...typography.caption, marginTop: spacing.sm, color: colors.primary, fontWeight: '600' },
-        exportRow: {
-          flexDirection: 'row',
-          gap: spacing.sm,
-          marginBottom: spacing.lg,
-        },
-        exportBtn: { flex: 1 },
-        regenerateBtn: { marginBottom: spacing.md },
+        screen: { flex: 1 },
       }),
     [colors, typography],
   );
@@ -107,17 +108,23 @@ export function AdminDashboardScreen() {
     load();
   }, [load]);
 
-  const handleRegenerateInsights = async () => {
+  const handleGenerateInsights = async () => {
     setRegenerating(true);
     try {
       const result = await regenerateInsights();
-      await load(true);
+      const refreshed = await getAdminDashboard();
+      setData(refreshed);
+      const savedTo = await printInsightsReport(refreshed);
       Alert.alert(
-        'Insights regenerated',
-        `${result.alerts} disease alerts · ${result.gaps} knowledge gaps · ${result.planting} planting insights\nSource: ${result.source === 'cloud' ? 'Supabase' : 'local analytics'}`,
+        'Insights ready',
+        `${result.alerts} disease alerts · ${result.gaps} knowledge gaps · ${result.planting} planting insights\nSource: ${result.source === 'cloud' ? 'Supabase' : 'local analytics'}${
+          Platform.OS === 'web'
+            ? '\n\nPrint dialog opened with the visual report.'
+            : `\n\nVisual report saved: ${savedTo}`
+        }`,
       );
     } catch (err) {
-      Alert.alert('Regeneration failed', toApiError(err).message);
+      Alert.alert('Generate insights failed', toApiError(err).message);
     } finally {
       setRegenerating(false);
     }
@@ -150,7 +157,9 @@ export function AdminDashboardScreen() {
   const farmers = data.users.filter((u) => u.role === 'farmer');
 
   return (
+    <View style={styles.screen}>
     <ScreenWrapper
+      style={{ paddingBottom: actionBarInset }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.primary} />
       }
@@ -226,13 +235,6 @@ export function AdminDashboardScreen() {
 
       {tab === 'intelligence' && (
         <>
-          <Button
-            title="Regenerate insights"
-            onPress={handleRegenerateInsights}
-            loading={regenerating}
-            fullWidth
-            style={styles.regenerateBtn}
-          />
           <AdminInsightsCharts data={data} />
           <Card variant="highlight">
             <Text style={styles.cardTitle}>Actionable regional intelligence</Text>
@@ -278,54 +280,11 @@ export function AdminDashboardScreen() {
       )}
 
       {tab === 'users' && (
-        <>
-          <Text style={styles.section}>Segmentation by farmer type</Text>
-          <View style={styles.statGrid}>
-            {Object.entries(data.segments.byFarmerType).map(([type, count]) => (
-              <StatBox key={type} label={type} value={count} />
-            ))}
-          </View>
-          <Text style={styles.section}>By location</Text>
-          {data.segments.byLocation.map((seg) => (
-            <Card key={seg.location} style={styles.itemCard}>
-              <Text style={styles.itemTitle}>📍 {seg.location}</Text>
-              <Text style={styles.itemMeta}>{seg.userCount} farmers</Text>
-              <Text style={styles.itemMeta}>
-                {Object.entries(seg.farmerTypes)
-                  .map(([t, c]) => `${t}: ${c}`)
-                  .join(' · ')}
-              </Text>
-            </Card>
-          ))}
-          <Text style={styles.section}>User profiles ({farmers.length})</Text>
-          <Text style={styles.hint}>Tap a farmer to view their full activity history</Text>
-          {farmers.map((u) => (
-            <Pressable
-              key={u.id}
-              onPress={() => navigation.navigate('UserDetail', { userId: u.id })}
-            >
-              <Card style={styles.itemCard}>
-                <Text style={styles.itemTitle}>{u.name || 'Unnamed'}</Text>
-                <Text style={styles.itemMeta}>{u.email}</Text>
-                <Text style={styles.itemMeta}>📍 {u.location}</Text>
-                <Text style={styles.itemMeta}>
-                  {u.farmerType ?? '—'} · {u.farmSize ?? 'Farm size N/A'}
-                </Text>
-                <Text style={styles.itemMeta}>
-                  Soil: {u.soilType ?? '—'} · Methods: {u.farmingMethods?.join(', ') || '—'}
-                </Text>
-                <Text style={styles.itemMeta}>Crops: {u.cropsPlanted?.join(', ') || 'None'}</Text>
-                <Text style={styles.itemMeta}>
-                  Data consent: {u.dataConsent ? '✓ Opted in' : '✗ Opted out'}
-                </Text>
-                <Text style={styles.itemMeta}>
-                  Status: {u.isActive === false ? '⛔ Deactivated' : '✓ Active'}
-                </Text>
-                <Text style={styles.tapHint}>View scans, chat, calendar & weather →</Text>
-              </Card>
-            </Pressable>
-          ))}
-        </>
+        <AdminUsersPanel
+          farmers={farmers}
+          regionSegments={data.segments.byLocation}
+          onOpenUser={(userId) => navigation.navigate('UserDetail', { userId })}
+        />
       )}
 
       {tab === 'farming' && (
@@ -435,8 +394,8 @@ export function AdminDashboardScreen() {
           {data.chatInsights.length === 0 ? (
             <EmptyState message="No chat insights yet — farmers need to use the assistant." variant="muted" />
           ) : (
-            data.chatInsights.map((insight) => (
-            <Card key={insight.topic} style={styles.itemCard}>
+            data.chatInsights.map((insight, index) => (
+            <Card key={`${insight.topic}-${index}`} style={styles.itemCard}>
               <Text style={styles.itemTitle}>{insight.topic}</Text>
               <Text style={styles.itemMeta}>{insight.questionCount} questions</Text>
               <Text style={styles.itemMeta} numberOfLines={2}>
@@ -449,26 +408,15 @@ export function AdminDashboardScreen() {
         </>
       )}
 
-      <Text style={styles.section}>Export data</Text>
-      <View style={styles.exportRow}>
-        <Button
-          title="Export PDF"
-          variant="primary"
-          onPress={() => handleExport('pdf')}
-          loading={exportingFormat === 'pdf'}
-          disabled={exportingFormat !== null && exportingFormat !== 'pdf'}
-          style={styles.exportBtn}
-        />
-        <Button
-          title="Export JSON"
-          variant="outline"
-          onPress={() => handleExport('json')}
-          loading={exportingFormat === 'json'}
-          disabled={exportingFormat !== null && exportingFormat !== 'json'}
-          style={styles.exportBtn}
-        />
-      </View>
     </ScreenWrapper>
+    <AdminFloatingActionBar
+      onGenerateInsights={handleGenerateInsights}
+      onExportPdf={() => handleExport('pdf')}
+      onExportJson={() => handleExport('json')}
+      generating={regenerating}
+      exportingFormat={exportingFormat}
+    />
+    </View>
   );
 }
 

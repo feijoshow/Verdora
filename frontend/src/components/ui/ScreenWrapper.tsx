@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, type RefObject } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +19,9 @@ interface ScreenWrapperProps extends ViewProps {
   padded?: boolean;
   refreshControl?: React.ReactElement<RefreshControlProps>;
   keyboardAvoiding?: boolean;
+  /** Extra offset below the safe-area top (e.g. header height). */
+  keyboardVerticalOffset?: number;
+  scrollRef?: RefObject<ScrollView | null>;
   centerContent?: boolean;
 }
 
@@ -28,6 +31,8 @@ export function ScreenWrapper({
   padded = true,
   refreshControl,
   keyboardAvoiding = false,
+  keyboardVerticalOffset = 0,
+  scrollRef,
   centerContent = false,
   style,
   ...rest
@@ -37,6 +42,7 @@ export function ScreenWrapper({
   const tabBar = useTabBarOptional();
   const scrollBottomPadding = useScrollBottomPadding();
   const bottomPad = scrollBottomPadding + spacing.lg;
+  const resolvedKeyboardOffset = insets.top + keyboardVerticalOffset;
 
   const styles = useMemo(
     () =>
@@ -58,9 +64,12 @@ export function ScreenWrapper({
 
   const scrollBody = (
     <ScrollView
+      ref={scrollRef}
       style={styles.flex}
       contentContainerStyle={contentStyle}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets={keyboardAvoiding}
       showsVerticalScrollIndicator={false}
       refreshControl={refreshControl}
       nestedScrollEnabled
@@ -82,8 +91,8 @@ export function ScreenWrapper({
   const wrapped = keyboardAvoiding ? (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={resolvedKeyboardOffset}
     >
       {body}
     </KeyboardAvoidingView>

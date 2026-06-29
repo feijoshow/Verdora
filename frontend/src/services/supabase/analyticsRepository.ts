@@ -5,10 +5,10 @@ import type {
   DiseaseOutbreakInsight,
   EnvironmentLogRecord,
   FarmingDataRecord,
-  LocationSegment,
   UserProfileRecord,
 } from '../../types/analytics';
 import type { DbChatLog, DbCrop, DbScan, DbUser, DbWeatherLog } from '../../types/database';
+import { aggregateLocationSegments } from '../../utils/adminUserGrouping';
 import { getUserLocationDisplay } from '../../utils/locationHelpers';
 import { isSupabaseConfigured } from './client';
 import { fetchAllChatLogs } from './repositories/chatRepository';
@@ -133,19 +133,6 @@ function aggregateChatInsights(logs: DbChatLog[]): ChatInsight[] {
   return Array.from(map.values()).sort((a, b) => b.questionCount - a.questionCount);
 }
 
-function aggregateLocations(farmers: UserProfileRecord[]): LocationSegment[] {
-  const map = new Map<string, LocationSegment>();
-  for (const f of farmers) {
-    const loc = f.location ?? 'Unknown';
-    const seg = map.get(loc) ?? { location: loc, userCount: 0, farmerTypes: {} };
-    seg.userCount += 1;
-    const ft = f.farmerType ?? 'unspecified';
-    seg.farmerTypes[ft] = (seg.farmerTypes[ft] ?? 0) + 1;
-    map.set(loc, seg);
-  }
-  return Array.from(map.values()).sort((a, b) => b.userCount - a.userCount);
-}
-
 /** Build admin dashboard from Supabase cloud tables */
 export async function getCloudAdminInsights(): Promise<AdminDashboardInsights | null> {
   if (!isSupabaseConfigured()) return null;
@@ -224,7 +211,7 @@ export async function getCloudAdminInsights(): Promise<AdminDashboardInsights | 
     users: profiles,
     segments: {
       byFarmerType,
-      byLocation: aggregateLocations(farmers),
+      byLocation: aggregateLocationSegments(farmers),
     },
     farmingData,
     cropScans,

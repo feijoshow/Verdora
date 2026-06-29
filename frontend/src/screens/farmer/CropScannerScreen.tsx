@@ -5,6 +5,7 @@ import {
   Image,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -16,7 +17,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../../components/navigation/ScreenHeader';
-import { Button, InlineLoader, ScreenWrapper } from '../../components/ui';
+import { Button, InlineLoader, Input, ScreenWrapper } from '../../components/ui';
 import { DiagnosisHistoryList } from '../../components/scanner/DiagnosisHistoryList';
 import { useAuth } from '../../context/AuthContext';
 import { useDiagnosis } from '../../context/DiagnosisContext';
@@ -45,6 +46,8 @@ const SCAN_STAGES = [
 export function CropScannerScreen({ navigation }: Props) {
   const { colors, typography } = useTheme();
   const cameraRef = useRef<CameraView>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const promptSectionY = useRef(0);
   const [permission, requestPermission] = useCameraPermissions();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -52,6 +55,7 @@ export function CropScannerScreen({ navigation }: Props) {
   const [cameraReady, setCameraReady] = useState(false);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [selectedField, setSelectedField] = useState<FarmField | null>(null);
+  const [scanPrompt, setScanPrompt] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const { user } = useAuth();
   const { history, addDiagnosis } = useDiagnosis();
@@ -94,6 +98,7 @@ export function CropScannerScreen({ navigation }: Props) {
         },
         analyzingText: { ...typography.body, color: colors.white, marginTop: spacing.md },
         actions: { paddingHorizontal: spacing.md, marginTop: spacing.md, gap: spacing.sm },
+        promptSection: { paddingHorizontal: spacing.md, marginTop: spacing.md },
         fieldPicker: { paddingHorizontal: spacing.md, marginTop: spacing.xs },
         historySection: { paddingHorizontal: spacing.md, marginTop: spacing.md, marginBottom: spacing.lg },
         historyToggle: {
@@ -142,12 +147,16 @@ export function CropScannerScreen({ navigation }: Props) {
       }
       setIsAnalyzing(true);
       try {
-        const { result, notice } = await diagnoseCropImage(uri, user);
+        const trimmedPrompt = scanPrompt.trim();
+        const { result, notice } = await diagnoseCropImage(uri, user, {
+          scanPrompt: trimmedPrompt || undefined,
+        });
         const tagged = {
           ...result,
           fieldId: selectedField?.id,
           fieldName: selectedField?.name,
           imageUri: result.imageUri ?? uri,
+          scanPrompt: trimmedPrompt || undefined,
         };
 
         setPreviewUri(null);
@@ -173,7 +182,7 @@ export function CropScannerScreen({ navigation }: Props) {
         setIsAnalyzing(false);
       }
     },
-    [addDiagnosis, navigation, selectedField, showInfo, showWarning, user],
+    [addDiagnosis, navigation, scanPrompt, selectedField, showInfo, showWarning, user],
   );
 
   const handleCapture = async () => {
@@ -220,6 +229,15 @@ export function CropScannerScreen({ navigation }: Props) {
     navigation.navigate('DiagnosisResults', { result });
   };
 
+  const scrollToPrompt = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, promptSectionY.current - spacing.lg),
+        animated: true,
+      });
+    }, 120);
+  }, []);
+
   if (!permission) {
     return (
       <ScreenWrapper scrollable={false}>
@@ -243,7 +261,12 @@ export function CropScannerScreen({ navigation }: Props) {
   }
 
   return (
-    <ScreenWrapper padded={false}>
+    <ScreenWrapper
+      padded={false}
+      keyboardAvoiding
+      keyboardVerticalOffset={64}
+      scrollRef={scrollRef}
+    >
       <ScreenHeader banner title="Scan" />
 
       <View style={styles.cameraContainer}>
@@ -276,6 +299,24 @@ export function CropScannerScreen({ navigation }: Props) {
             </View>
           </CameraView>
         )}
+      </View>
+
+      <View
+        style={styles.promptSection}
+        onLayout={(event) => {
+          promptSectionY.current = event.nativeEvent.layout.y;
+        }}
+      >
+        <Input
+          label="What should we look for?"
+          placeholder="e.g. yellow spots on leaves, pest damage, is this healthy?"
+          value={scanPrompt}
+          onChangeText={setScanPrompt}
+          onFocus={scrollToPrompt}
+          multiline
+          maxLength={200}
+          editable={!isAnalyzing}
+        />
       </View>
 
       <View style={styles.actions}>

@@ -7,6 +7,8 @@ export interface BarChartItem {
   label: string;
   value: number;
   color?: string;
+  /** Unique React key — required when labels repeat */
+  key?: string;
 }
 
 interface SimpleBarChartProps {
@@ -51,10 +53,10 @@ export function SimpleBarChart({ title, items, unit = '' }: SimpleBarChartProps)
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>{title}</Text>
-      {items.map((item) => {
+      {items.map((item, index) => {
         const widthPct = Math.max(8, Math.round((item.value / maxValue) * 100));
         return (
-          <View key={item.label} style={styles.row}>
+          <View key={item.key ?? `${title}-${index}-${item.label}`} style={styles.row}>
             <Text style={styles.label} numberOfLines={2}>
               {item.label}
             </Text>
