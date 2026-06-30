@@ -16,6 +16,7 @@ type TabBarContextValue = {
   translateY: Animated.Value;
   onContentScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   showTabBar: () => void;
+  hideTabBar: () => void;
 };
 
 const TabBarContext = createContext<TabBarContextValue | null>(null);
@@ -62,8 +63,8 @@ export function TabBarProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ translateY, onContentScroll, showTabBar }),
-    [translateY, onContentScroll, showTabBar],
+    () => ({ translateY, onContentScroll, showTabBar, hideTabBar }),
+    [translateY, onContentScroll, showTabBar, hideTabBar],
   );
 
   return <TabBarContext.Provider value={value}>{children}</TabBarContext.Provider>;

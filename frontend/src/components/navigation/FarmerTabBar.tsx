@@ -36,7 +36,9 @@ const TAB_ICONS: Record<keyof FarmerTabParamList, { active: TabIconName; inactiv
 export function FarmerTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { colors, shadows } = useTheme();
-  const { translateY, showTabBar } = useTabBar();
+  const { translateY, showTabBar, hideTabBar } = useTabBar();
+  const activeRoute = state.routes[state.index]?.name;
+  const hideForChat = activeRoute === 'Chat';
   const [barWidth, setBarWidth] = useState(0);
   const indicatorX = useRef(new Animated.Value(0)).current;
   const tabCount = state.routes.length;
@@ -91,8 +93,12 @@ export function FarmerTabBar({ state, descriptors, navigation }: BottomTabBarPro
   );
 
   useEffect(() => {
+    if (hideForChat) {
+      hideTabBar();
+      return;
+    }
     showTabBar();
-  }, [state.index, showTabBar]);
+  }, [hideForChat, hideTabBar, showTabBar]);
 
   useEffect(() => {
     if (tabWidth <= 0) return;

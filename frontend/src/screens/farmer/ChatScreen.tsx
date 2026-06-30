@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatBubble } from '../../components/chat/ChatBubble';
@@ -29,7 +30,6 @@ import { getFarmerSummary } from '../../services/data/farmerDataService';
 import { toApiError } from '../../services/api/errors';
 import type { ChatMessage } from '../../types';
 import { useTabBarOptional } from '../../context/TabBarContext';
-import { useScrollBottomPadding } from '../../hooks/useScrollBottomPadding';
 import { useTheme } from '../../context/ThemeContext';
 import { spacing, borderRadius, touchTarget } from '../../constants/theme';
 
@@ -52,7 +52,7 @@ export function ChatScreen() {
   const { showWarning } = useFeedback();
   const insets = useSafeAreaInsets();
   const tabBar = useTabBarOptional();
-  const scrollBottomPadding = useScrollBottomPadding();
+  const inputBottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 16 : spacing.md);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompts, setPrompts] = useState<string[]>([]);
   const [input, setInput] = useState('');
@@ -155,6 +155,13 @@ export function ChatScreen() {
     })();
   }, [user]);
 
+  useFocusEffect(
+    useCallback(() => {
+      tabBar?.hideTabBar();
+      return () => tabBar?.showTabBar();
+    }, [tabBar]),
+  );
+
   const persistMessages = useCallback(
     async (msgs: ChatMessage[]) => {
       if (user) await saveChatHistory(user.id, msgs);
@@ -231,8 +238,12 @@ export function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View style={styles.body}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.body}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+      >
         <View style={styles.headerWrap}>
           <ScreenHeader banner title="Chat" />
         </View>
@@ -243,10 +254,8 @@ export function ChatScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ChatBubble message={item} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: spacing.lg }]}
           onContentSizeChange={scrollToEnd}
-          onScroll={tabBar?.onContentScroll}
-          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         />
@@ -280,31 +289,26 @@ export function ChatScreen() {
           </View>
         ) : null}
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 56 : 0}
-        >
-          <View style={[styles.inputRow, { paddingBottom: scrollBottomPadding }]}>
-            <TextInput
-              style={styles.input}
-              value={input}
-              onChangeText={setInput}
-              placeholder="Ask about your crops…"
-              placeholderTextColor={colors.textMuted}
-              multiline
-              maxLength={500}
-              editable={!sending}
-            />
-            <Pressable
-              style={[styles.sendBtn, (!input.trim() || sending) && styles.sendDisabled]}
-              onPress={() => sendMessage(input)}
-              disabled={!input.trim() || sending}
-            >
-              <Ionicons name="send" size={18} color={colors.white} />
-            </Pressable>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
+        <View style={[styles.inputRow, { paddingBottom: inputBottomPad }]}>
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder="Ask about your crops…"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            maxLength={500}
+            editable={!sending}
+          />
+          <Pressable
+            style={[styles.sendBtn, (!input.trim() || sending) && styles.sendDisabled]}
+            onPress={() => sendMessage(input)}
+            disabled={!input.trim() || sending}
+          >
+            <Ionicons name="send" size={18} color={colors.white} />
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
