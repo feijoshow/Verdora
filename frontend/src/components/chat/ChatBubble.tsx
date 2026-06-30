@@ -93,6 +93,7 @@ export function ChatBubble({ message, onDelete }: ChatBubbleProps) {
         ]}
       >
         <MarkdownText
+          selectable
           style={[styles.text, isUser && styles.textUser, isError && styles.textError]}
           boldStyle={[styles.text, isUser && styles.textUser, isError && styles.textError]}
         >

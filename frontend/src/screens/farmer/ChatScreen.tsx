@@ -11,6 +11,8 @@ import {
   Text,
   TextInput,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,8 +37,8 @@ import { toApiError } from '../../services/api/errors';
 import type { ChatMessage } from '../../types';
 import { useTabBarOptional } from '../../context/TabBarContext';
 import { useTheme } from '../../context/ThemeContext';
-import { tabBarOverlayHeight } from '../../navigation/tabBarConstants';
-import { spacing, borderRadius, touchTarget } from '../../constants/theme';
+import { tabBarSafeBottomInset } from '../../navigation/tabBarConstants';
+import { spacing, borderRadius } from '../../constants/theme';
 import { confirmDestructive } from '../../utils/confirmAction';
 
 function welcomeMessage(crops: string[]): ChatMessage {
@@ -54,12 +56,12 @@ function welcomeMessage(crops: string[]): ChatMessage {
 
 export function ChatScreen() {
   const { user } = useAuth();
-  const { colors, typography } = useTheme();
+  const { colors, typography, shadows } = useTheme();
   const { showWarning } = useFeedback();
   const insets = useSafeAreaInsets();
   const tabBar = useTabBarOptional();
-  /** Sit just above the floating tab bar without extra dead space */
-  const inputBottomPad = tabBarOverlayHeight(insets.bottom) - spacing.lg;
+  /** Fixed — tab bar floats over the transparent gap when visible */
+  const inputBottomPad = tabBarSafeBottomInset(insets.bottom) + spacing.sm;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompts, setPrompts] = useState<string[]>([]);
   const [input, setInput] = useState('');
@@ -68,8 +70,9 @@ export function ChatScreen() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const stickToBottomRef = useRef(true);
   const footerBottomPad = keyboardVisible ? spacing.xs : inputBottomPad;
-  const [footerHeight, setFooterHeight] = useState(inputBottomPad + 120);
+  const [footerHeight, setFooterHeight] = useState(160);
 
   const styles = useMemo(
     () =>
@@ -85,13 +88,13 @@ export function ChatScreen() {
         typing: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingHorizontal: spacing.md,
-          paddingBottom: spacing.sm,
-          gap: spacing.sm,
+          justifyContent: 'center',
+          paddingBottom: spacing.xs,
+          gap: spacing.xs,
         },
-        typingText: { ...typography.caption, color: colors.textMuted },
+        typingText: { ...typography.caption, color: colors.textMuted, fontSize: 12 },
         promptsWrap: {
-          paddingTop: spacing.xs,
+          paddingBottom: spacing.xs,
         },
         promptsLabel: {
           ...typography.caption,
@@ -117,34 +120,42 @@ export function ChatScreen() {
           backgroundColor: colors.primarySoft,
         },
         promptText: { ...typography.caption, color: colors.text, fontWeight: '600' },
-        inputRow: {
-          flexDirection: 'row',
-          alignItems: 'flex-end',
+        composerPanel: {
           paddingHorizontal: spacing.md,
           paddingTop: spacing.sm,
+          backgroundColor: colors.background,
+        },
+        inputShell: {
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          backgroundColor: colors.surface,
+          borderRadius: borderRadius.full,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingLeft: spacing.md,
+          paddingRight: spacing.xs,
+          paddingVertical: spacing.xs,
+          minHeight: 46,
+          ...shadows.card,
         },
         input: {
           flex: 1,
-          maxHeight: 100,
-          backgroundColor: colors.background,
-          borderRadius: borderRadius.lg,
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm + 2,
+          maxHeight: 96,
+          paddingVertical: Platform.OS === 'ios' ? spacing.sm + 2 : spacing.sm,
           fontSize: 16,
+          lineHeight: 22,
           color: colors.text,
-          borderWidth: 1,
-          borderColor: colors.border,
         },
         sendBtn: {
-          width: touchTarget,
-          height: touchTarget,
-          borderRadius: touchTarget / 2,
+          width: 36,
+          height: 36,
+          borderRadius: 18,
           backgroundColor: colors.primary,
           alignItems: 'center',
           justifyContent: 'center',
-          marginLeft: spacing.sm,
+          marginBottom: 1,
         },
-        sendDisabled: { opacity: 0.4 },
+        sendDisabled: { opacity: 0.35 },
         inputFooter: {
           position: 'absolute',
           left: 0,
@@ -152,28 +163,17 @@ export function ChatScreen() {
           bottom: 0,
           backgroundColor: 'transparent',
         },
-        disclaimerRow: {
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          gap: spacing.xs,
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.sm,
-          backgroundColor: colors.background,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: colors.border,
-        },
         disclaimer: {
-          flex: 1,
-          maxWidth: 340,
           ...typography.caption,
-          fontSize: 11,
-          lineHeight: 15,
+          fontSize: 12,
+          lineHeight: 17,
           color: colors.textMuted,
           textAlign: 'center',
+          marginTop: spacing.sm,
+          paddingHorizontal: spacing.sm,
         },
       }),
-    [colors, typography],
+    [colors, typography, shadows],
   );
 
   useEffect(() => {
@@ -209,6 +209,24 @@ export function ChatScreen() {
   const scrollToEnd = useCallback(() => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
   }, []);
+
+  const onListScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      tabBar?.onContentScroll(event);
+
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      const distanceFromBottom =
+        contentSize.height - layoutMeasurement.height - contentOffset.y;
+      stickToBottomRef.current = distanceFromBottom < 96;
+    },
+    [tabBar],
+  );
+
+  const onListContentSizeChange = useCallback(() => {
+    if (stickToBottomRef.current) {
+      scrollToEnd();
+    }
+  }, [scrollToEnd]);
 
   const hasUserMessages = messages.some((m) => m.role === 'user');
   const showPrompts = !hasUserMessages && prompts.length > 0;
@@ -261,6 +279,7 @@ export function ChatScreen() {
     setMessages(nextMessages);
     setInput('');
     setSending(true);
+    stickToBottomRef.current = true;
     scrollToEnd();
 
     try {
@@ -346,8 +365,8 @@ export function ChatScreen() {
               />
             )}
             contentContainerStyle={[styles.listContent, { paddingBottom: footerHeight }]}
-            onContentSizeChange={scrollToEnd}
-            onScroll={tabBar?.onContentScroll}
+            onContentSizeChange={onListContentSizeChange}
+            onScroll={onListScroll}
             scrollEventThrottle={32}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -360,13 +379,6 @@ export function ChatScreen() {
             style={[styles.inputFooter, { paddingBottom: footerBottomPad }]}
             onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
           >
-            {sending ? (
-              <View style={styles.typing}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.typingText}>Thinking…</Text>
-              </View>
-            ) : null}
-
             {showPrompts ? (
               <View style={styles.promptsWrap}>
                 <ScrollView
@@ -389,34 +401,40 @@ export function ChatScreen() {
               </View>
             ) : null}
 
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.input}
-                value={input}
-                onChangeText={setInput}
-                placeholder="Ask about your crops…"
-                placeholderTextColor={colors.textMuted}
-                multiline
-                maxLength={500}
-                editable={!sending}
-              />
-              <Pressable
-                style={[styles.sendBtn, (!input.trim() || sending) && styles.sendDisabled]}
-                onPress={() => sendMessage(input)}
-                disabled={!input.trim() || sending}
-              >
-                <Ionicons name="send" size={18} color={colors.white} />
-              </Pressable>
-            </View>
-            {!keyboardVisible ? (
-              <View style={styles.disclaimerRow}>
-                <Ionicons name="information-circle-outline" size={13} color={colors.textMuted} />
-                <Text style={styles.disclaimer}>
-                  Verdora offers general guidance only. AI responses may be incomplete or wrong —
-                  confirm important crop and health decisions with a qualified agronomist.
-                </Text>
+            <View style={styles.composerPanel}>
+              {sending ? (
+                <View style={styles.typing}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={styles.typingText}>Thinking…</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.inputShell}>
+                <TextInput
+                  style={styles.input}
+                  value={input}
+                  onChangeText={setInput}
+                  placeholder="Ask about your crops…"
+                  placeholderTextColor={colors.textMuted}
+                  multiline
+                  maxLength={500}
+                  editable={!sending}
+                />
+                <Pressable
+                  style={[styles.sendBtn, (!input.trim() || sending) && styles.sendDisabled]}
+                  onPress={() => sendMessage(input)}
+                  disabled={!input.trim() || sending}
+                >
+                  <Ionicons name="arrow-up" size={18} color={colors.onPrimary} />
+                </Pressable>
               </View>
-            ) : null}
+
+              {!keyboardVisible ? (
+                <Text style={styles.disclaimer}>
+                  AI guidance only — confirm important decisions with a qualified agronomist.
+                </Text>
+              ) : null}
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
