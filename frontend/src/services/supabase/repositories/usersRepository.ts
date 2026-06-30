@@ -69,7 +69,14 @@ export async function upsertUser(user: User, dataConsent: boolean): Promise<void
   if (!sb) return;
 
   const row = userToDbRow(user, dataConsent);
-  const { error } = await sb.from('users').upsert(row, { onConflict: 'id' });
+  let { error } = await sb.from('users').upsert(row, { onConflict: 'id' });
+
+  if (error?.message?.includes('is_active')) {
+    const { is_active: _ignored, ...legacyRow } = row;
+    const retry = await sb.from('users').upsert(legacyRow, { onConflict: 'id' });
+    error = retry.error;
+  }
+
   if (error) console.warn('[Verdora] Supabase users upsert:', error.message);
 }
 

@@ -60,6 +60,32 @@ function fail(res, status, message) {
   return res.status(status).json({ success: false, message });
 }
 
+/** Retry Z.ai on 429 — free tier rate limits are common on cold starts. */
+async function fetchZaiWithRetry(url, options, maxRetries = 2) {
+  let response = await fetch(url, options);
+  for (let attempt = 0; attempt < maxRetries && response.status === 429; attempt += 1) {
+    const waitMs = 2000 * (attempt + 1);
+    console.warn(`[Z.ai] 429 rate limit — retry ${attempt + 1}/${maxRetries} in ${waitMs}ms`);
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    response = await fetch(url, options);
+  }
+  return response;
+}
+
+async function fetchUserProfile(sb, userId) {
+  const withActive = await sb
+    .from('users')
+    .select('role, is_active')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!withActive.error?.message?.includes('is_active')) {
+    return withActive;
+  }
+
+  return sb.from('users').select('role').eq('id', userId).maybeSingle();
+}
+
 function getSupabaseAdmin() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -84,11 +110,7 @@ async function requireAdmin(req, res, next) {
     return fail(res, 401, 'Invalid or expired session');
   }
 
-  const { data: profile, error: profileError } = await sb
-    .from('users')
-    .select('role, is_active')
-    .eq('id', userData.user.id)
-    .maybeSingle();
+  const { data: profile, error: profileError } = await fetchUserProfile(sb, userData.user.id);
 
   if (profileError || profile?.role !== 'admin') {
     return fail(res, 403, 'Admin access only');
@@ -202,7 +224,7 @@ app.post('/api/v1/chat/message', async (req, res) => {
 
   if (ZAI_API_KEY) {
     try {
-      const upstream = await fetch(ZAI_CHAT_URL, {
+      const upstream = await fetchZaiWithRetry(ZAI_CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -381,7 +403,7 @@ async function requestPlantingGuideFromChat(cropName, location) {
     };
     if (useJsonFormat) body.response_format = { type: 'json_object' };
 
-    const upstream = await fetch(ZAI_CHAT_URL, {
+    const upstream = await fetchZaiWithRetry(ZAI_CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -565,7 +587,7 @@ async function requestCareScheduleFromChat(payload) {
     };
     if (useJsonFormat) body.response_format = { type: 'json_object' };
 
-    const upstream = await fetch(ZAI_CHAT_URL, {
+    const upstream = await fetchZaiWithRetry(ZAI_CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -694,7 +716,7 @@ app.post('/api/v1/crops/diagnose', async (req, res) => {
   }
 
   try {
-    const upstream = await fetch(ZAI_CHAT_URL, {
+    const upstream = await fetchZaiWithRetry(ZAI_CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

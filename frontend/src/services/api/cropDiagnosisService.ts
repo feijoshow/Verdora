@@ -29,16 +29,18 @@ function scanErrorMessage(error: unknown): string {
   const status = apiError.status;
 
   if (status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('rate limit')) {
-    return 'Scanner rate limit reached — wait a moment and try again.';
+    return 'Scanner is busy (Z.ai rate limit). Wait 30 seconds and try again.';
   }
   if (status === 403 || msg.includes('403') || msg.includes('permission') || msg.includes('invalid api key')) {
-    return 'Scanner API key rejected. Check ZAI_API_KEY in api/.env and restart npm run api:dev.';
+    return 'Scanner could not authenticate. Contact the Verdora team.';
   }
-  if (msg.includes('network') || msg.includes('timeout') || msg.includes('econnrefused')) {
-    return 'No connection — check your network and that npm run api:dev is running.';
+  if (msg.includes('network') || msg.includes('timeout') || msg.includes('econnrefused') || msg.includes('failed to fetch')) {
+    return hasAiApi
+      ? 'No connection to the scan service. Check your internet and try again.'
+      : 'No connection — check your network and try again.';
   }
   if (msg.includes('zai_api_key') || msg.includes('not configured on the api')) {
-    return 'Scan API missing ZAI_API_KEY — set it in api/.env and restart the server.';
+    return 'Scan service is unavailable. Try again later or contact the Verdora team.';
   }
   if (msg.includes('not valid json') || msg.includes('empty response') || msg.includes('unparseable')) {
     return "Couldn't read the scan result — try a clearer photo of the affected leaf or fruit.";
