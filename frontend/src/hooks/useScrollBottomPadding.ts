@@ -1,10 +1,9 @@
 import { useNavigation } from '@react-navigation/native';
-import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TAB_BAR_CONTENT_HEIGHT } from '../navigation/tabBarConstants';
+import { tabBarOverlayHeight } from '../navigation/tabBarConstants';
 
-/** Bottom inset for scroll content — tab bar when inside tabs, safe area otherwise. */
+/** Bottom inset for scroll content — clears the floating tab bar when inside tabs. */
 export function useScrollBottomPadding(): number {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -13,7 +12,7 @@ export function useScrollBottomPadding(): number {
   while (parent) {
     const state = parent.getState();
     if (state?.type === 'tab') {
-      return TAB_BAR_CONTENT_HEIGHT + Math.max(insets.bottom, Platform.OS === 'web' ? 8 : 0);
+      return tabBarOverlayHeight(insets.bottom);
     }
     parent = parent.getParent();
   }

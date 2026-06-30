@@ -74,7 +74,7 @@ export function ScreenWrapper({
       refreshControl={refreshControl}
       nestedScrollEnabled
       onScroll={tabBar?.onContentScroll}
-      scrollEventThrottle={16}
+      scrollEventThrottle={32}
     >
       {children}
     </ScrollView>

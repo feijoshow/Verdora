@@ -10,13 +10,15 @@ import { Animated, type NativeScrollEvent, type NativeSyntheticEvent } from 'rea
 
 import { TAB_BAR_PILL_HEIGHT, TAB_BAR_FLOAT_MARGIN } from '../navigation/tabBarConstants';
 
-const TAB_BAR_HIDE_OFFSET = TAB_BAR_PILL_HEIGHT + TAB_BAR_FLOAT_MARGIN + 24;
+const TAB_BAR_HIDE_OFFSET = TAB_BAR_PILL_HEIGHT + TAB_BAR_FLOAT_MARGIN + 32;
 
 type TabBarContextValue = {
   translateY: Animated.Value;
   onContentScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
-  showTabBar: () => void;
+  showTabBar: (immediate?: boolean) => void;
   hideTabBar: () => void;
+  /** When false (Chat tab), tab bar stays visible and scroll does not hide it. */
+  setScrollHideEnabled: (enabled: boolean) => void;
 };
 
 const TabBarContext = createContext<TabBarContextValue | null>(null);
@@ -25,35 +27,57 @@ export function TabBarProvider({ children }: { children: ReactNode }) {
   const translateY = useRef(new Animated.Value(0)).current;
   const visibleRef = useRef(true);
   const lastScrollY = useRef(0);
+  const scrollHideEnabledRef = useRef(true);
 
-  const showTabBar = useCallback(() => {
-    if (visibleRef.current) return;
-    visibleRef.current = true;
-    Animated.timing(translateY, {
-      toValue: 0,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-  }, [translateY]);
+  const showTabBar = useCallback(
+    (immediate = false) => {
+      visibleRef.current = true;
+      if (immediate) {
+        translateY.stopAnimation();
+        translateY.setValue(0);
+        return;
+      }
+      Animated.spring(translateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 72,
+        friction: 14,
+      }).start();
+    },
+    [translateY],
+  );
 
   const hideTabBar = useCallback(() => {
-    if (!visibleRef.current) return;
+    if (!scrollHideEnabledRef.current || !visibleRef.current) return;
     visibleRef.current = false;
-    Animated.timing(translateY, {
+    Animated.spring(translateY, {
       toValue: TAB_BAR_HIDE_OFFSET,
-      duration: 220,
       useNativeDriver: true,
+      tension: 72,
+      friction: 14,
     }).start();
   }, [translateY]);
+
+  const setScrollHideEnabled = useCallback(
+    (enabled: boolean) => {
+      scrollHideEnabledRef.current = enabled;
+      if (!enabled) {
+        showTabBar(true);
+      }
+    },
+    [showTabBar],
+  );
 
   const onContentScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!scrollHideEnabledRef.current) return;
+
       const y = event.nativeEvent.contentOffset.y;
       const diff = y - lastScrollY.current;
 
-      if (diff > 10 && y > 56) {
+      if (diff > 18 && y > 72) {
         hideTabBar();
-      } else if (diff < -10) {
+      } else if (diff < -12) {
         showTabBar();
       }
 
@@ -63,8 +87,8 @@ export function TabBarProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ translateY, onContentScroll, showTabBar, hideTabBar }),
-    [translateY, onContentScroll, showTabBar, hideTabBar],
+    () => ({ translateY, onContentScroll, showTabBar, hideTabBar, setScrollHideEnabled }),
+    [translateY, onContentScroll, showTabBar, hideTabBar, setScrollHideEnabled],
   );
 
   return <TabBarContext.Provider value={value}>{children}</TabBarContext.Provider>;

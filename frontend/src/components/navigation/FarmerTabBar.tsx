@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -18,6 +17,7 @@ import {
   TAB_BAR_FLOAT_MARGIN,
   TAB_BAR_HORIZONTAL_MARGIN,
   TAB_BAR_PILL_HEIGHT,
+  tabBarSafeBottomInset,
 } from '../../navigation/tabBarConstants';
 import type { FarmerTabParamList } from '../../navigation/types';
 import { borderRadius } from '../../constants/theme';
@@ -36,7 +36,8 @@ const TAB_ICONS: Record<keyof FarmerTabParamList, { active: TabIconName; inactiv
 export function FarmerTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { colors, shadows } = useTheme();
-  const { translateY, showTabBar } = useTabBar();
+  const { translateY, showTabBar, setScrollHideEnabled } = useTabBar();
+  const activeRoute = state.routes[state.index]?.name;
   const [barWidth, setBarWidth] = useState(0);
   const indicatorX = useRef(new Animated.Value(0)).current;
   const tabCount = state.routes.length;
@@ -91,8 +92,10 @@ export function FarmerTabBar({ state, descriptors, navigation }: BottomTabBarPro
   );
 
   useEffect(() => {
-    showTabBar();
-  }, [state.index, showTabBar]);
+    const isChat = activeRoute === 'Chat';
+    setScrollHideEnabled(!isChat);
+    showTabBar(true);
+  }, [activeRoute, setScrollHideEnabled, showTabBar]);
 
   useEffect(() => {
     if (tabWidth <= 0) return;
@@ -108,7 +111,7 @@ export function FarmerTabBar({ state, descriptors, navigation }: BottomTabBarPro
     setBarWidth(event.nativeEvent.layout.width);
   };
 
-  const bottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 12 : 8);
+  const bottomPad = tabBarSafeBottomInset(insets.bottom);
 
   return (
     <Animated.View

@@ -50,7 +50,7 @@ export function ChatScreen() {
   const { colors, typography } = useTheme();
   const { showWarning } = useFeedback();
   const insets = useSafeAreaInsets();
-  const inputBottomPad = useScrollBottomPadding() + spacing.sm;
+  const tabBarInset = useScrollBottomPadding();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompts, setPrompts] = useState<string[]>([]);
   const [input, setInput] = useState('');
@@ -231,7 +231,7 @@ export function ChatScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
-        style={styles.body}
+        style={[styles.body, { paddingBottom: tabBarInset }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
       >
@@ -280,7 +280,7 @@ export function ChatScreen() {
           </View>
         ) : null}
 
-        <View style={[styles.inputRow, { paddingBottom: inputBottomPad }]}>
+        <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
             value={input}
