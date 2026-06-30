@@ -3,11 +3,17 @@ import { Platform } from 'react-native';
 import { hasAiApi, env } from '../../config/env';
 import type { ChatMessage, User } from '../../types';
 import { generateId } from '../../utils/generateId';
+import { toUtcIso } from '../../utils/dateTime';
 import { getChatLocationLabel } from '../../utils/locationHelpers';
 import { buildChatSystemPrompt, isNamibiaDrySeason } from '../ai/farmerContext';
 import { findPlantingGuide } from '../calendar/plantingGuideService';
 import { getUserCropScans, getUserFarmingRecords } from '../analytics/dataCollectionService';
 import { getSupabase, isSupabaseConfigured } from '../supabase/client';
+import {
+  deleteChatLog,
+  fetchChatLogsByUser,
+} from '../supabase/repositories/chatRepository';
+import type { DbChatLog } from '../../types/database';
 import { API_ENDPOINTS, EXTERNAL_APIS, GROK_CHAT_MODEL, ZAI_CHAT_MODEL, ZAI_CHAT_COMPLETIONS_URL } from './endpoints';
 import { aiApiPost, externalClient } from './client';
 import { toApiError } from './errors';
@@ -342,11 +348,143 @@ export async function sendChatMessage(user: User, request: ChatRequest): Promise
 
 const chatKey = (userId: string) => `@verdora_chat_${userId}`;
 
-export async function loadChatHistory(userId: string): Promise<ChatMessage[]> {
+export interface ChatExchange {
+  logId?: string;
+  userMessageId: string;
+  question: string;
+  answer?: string;
+  askedAt: string;
+}
+
+export function chatLogsToMessages(logs: DbChatLog[]): ChatMessage[] {
+  const sorted = [...logs].sort((a, b) => a.asked_at.localeCompare(b.asked_at));
+  const messages: ChatMessage[] = [];
+
+  for (const log of sorted) {
+    const timestamp = toUtcIso(log.asked_at);
+    messages.push({
+      id: `user_${log.id}`,
+      role: 'user',
+      content: log.question,
+      timestamp,
+      logId: log.id,
+    });
+    if (log.ai_response) {
+      messages.push({
+        id: `assistant_${log.id}`,
+        role: 'assistant',
+        content: log.ai_response,
+        timestamp,
+        logId: log.id,
+      });
+    }
+  }
+
+  return messages;
+}
+
+function mergeChatHistories(local: ChatMessage[], cloud: ChatMessage[]): ChatMessage[] {
+  if (cloud.length === 0) return local;
+  if (local.length === 0) return cloud;
+
+  const cloudLogIds = new Set(cloud.map((m) => m.logId).filter(Boolean));
+  const cloudQuestions = new Set(
+    cloud.filter((m) => m.role === 'user').map((m) => m.content.trim().toLowerCase()),
+  );
+
+  const localOnly = local.filter((m) => {
+    if (m.id === 'welcome') return false;
+    if (m.logId && cloudLogIds.has(m.logId)) return false;
+    if (m.role === 'user' && cloudQuestions.has(m.content.trim().toLowerCase())) return false;
+    return true;
+  });
+
+  const merged = [...cloud, ...localOnly];
+  merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  return merged;
+}
+
+export function extractChatExchanges(messages: ChatMessage[]): ChatExchange[] {
+  const exchanges: ChatExchange[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+    if (message.id === 'welcome' || message.role !== 'user') continue;
+
+    const next = messages[i + 1];
+    const answer = next?.role === 'assistant' ? next.content : undefined;
+    exchanges.push({
+      logId: message.logId,
+      userMessageId: message.id,
+      question: message.content,
+      answer,
+      askedAt: message.timestamp,
+    });
+    if (answer) i++;
+  }
+
+  return exchanges.reverse();
+}
+
+async function loadLocalChatHistory(userId: string): Promise<ChatMessage[]> {
   const raw = await AsyncStorage.getItem(chatKey(userId));
-  return raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+  if (!raw) return [];
+  const parsed = JSON.parse(raw) as ChatMessage[];
+  return parsed.map((message) => ({
+    ...message,
+    timestamp: toUtcIso(message.timestamp),
+  }));
+}
+
+export async function loadChatHistory(userId: string): Promise<ChatMessage[]> {
+  const local = await loadLocalChatHistory(userId);
+
+  if (!isSupabaseConfigured()) return local;
+
+  try {
+    const logs = await fetchChatLogsByUser(userId);
+    const cloud = chatLogsToMessages(logs);
+    const merged = mergeChatHistories(local, cloud);
+    if (merged.length > 0 && merged.length !== local.length) {
+      await AsyncStorage.setItem(chatKey(userId), JSON.stringify(merged));
+    }
+    return merged.length > 0 ? merged : local;
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[Chat history] cloud load failed:', error);
+    }
+    return local;
+  }
 }
 
 export async function saveChatHistory(userId: string, messages: ChatMessage[]): Promise<void> {
   await AsyncStorage.setItem(chatKey(userId), JSON.stringify(messages));
+}
+
+export async function deleteChatExchange(
+  userId: string,
+  exchange: Pick<ChatExchange, 'logId' | 'userMessageId' | 'question'>,
+  messages: ChatMessage[],
+): Promise<ChatMessage[]> {
+  const userIdx = messages.findIndex((m) => m.id === exchange.userMessageId);
+  if (userIdx === -1) return messages;
+
+  const idsToRemove = new Set<string>([messages[userIdx].id]);
+  const next = messages[userIdx + 1];
+  if (next?.role === 'assistant') idsToRemove.add(next.id);
+
+  const updated = messages.filter((m) => !idsToRemove.has(m.id));
+
+  if (exchange.logId) {
+    try {
+      await deleteChatLog(exchange.logId, userId);
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[Chat history] cloud delete failed:', error);
+      }
+    }
+  }
+
+  await saveChatHistory(userId, updated);
+  return updated;
 }

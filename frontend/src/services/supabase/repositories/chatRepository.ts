@@ -7,9 +7,9 @@ export async function insertChatLog(
   user: User,
   question: string,
   aiResponse?: string,
-): Promise<void> {
+): Promise<string | null> {
   const sb = getSupabase();
-  if (!sb) return;
+  if (!sb) return null;
 
   const row: InsertDbChatLog = {
     id: generateId('clog'),
@@ -21,7 +21,11 @@ export async function insertChatLog(
   };
 
   const { error } = await sb.from('chat_logs').insert(row);
-  if (error) console.warn('[Verdora] Supabase chat_logs insert:', error.message);
+  if (error) {
+    console.warn('[Verdora] Supabase chat_logs insert:', error.message);
+    return null;
+  }
+  return row.id;
 }
 
 export async function fetchAllChatLogs(): Promise<DbChatLog[]> {
@@ -35,6 +39,14 @@ export async function fetchAllChatLogs(): Promise<DbChatLog[]> {
     .limit(500);
   if (error) throw new Error(error.message);
   return (data ?? []) as DbChatLog[];
+}
+
+export async function deleteChatLog(logId: string, userId: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+
+  const { error } = await sb.from('chat_logs').delete().eq('id', logId).eq('user_id', userId);
+  if (error) throw new Error(error.message);
 }
 
 export async function fetchChatLogsByUser(userId: string): Promise<DbChatLog[]> {

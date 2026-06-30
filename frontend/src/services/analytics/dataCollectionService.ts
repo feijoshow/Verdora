@@ -189,20 +189,33 @@ export async function trackChatQuestion(
   user: User,
   question: string,
   aiResponse?: string,
-): Promise<void> {
-  if (!(await canCollectForUser(user))) return;
+): Promise<string | undefined> {
+  if (!(await canCollectForUser(user))) return undefined;
 
-  await insertChatLog(user, question, aiResponse);
+  const logId = await insertChatLog(user, question, aiResponse);
 
   const db = await loadDb();
   db.chatQuestions.unshift({
-    id: generateId('chat'),
+    id: logId ?? generateId('chat'),
     userId: user.id,
     location: user.location ?? 'Unknown',
     question: question.trim(),
     timestamp: new Date().toISOString(),
+    aiResponse,
   });
   db.chatQuestions = db.chatQuestions.slice(0, 500);
+  await saveDb(db);
+  return logId ?? undefined;
+}
+
+export async function removeChatQuestion(userId: string, logId?: string, question?: string): Promise<void> {
+  const db = await loadDb();
+  db.chatQuestions = db.chatQuestions.filter((q) => {
+    if (q.userId !== userId) return true;
+    if (logId && q.id === logId) return false;
+    if (question && q.question === question.trim()) return false;
+    return true;
+  });
   await saveDb(db);
 }
 

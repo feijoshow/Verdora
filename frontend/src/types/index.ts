@@ -57,4 +57,6 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  /** Links to `chat_logs.id` when synced to Supabase */
+  logId?: string;
 }

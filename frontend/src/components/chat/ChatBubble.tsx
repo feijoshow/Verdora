@@ -1,16 +1,18 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ChatMessage } from '../../types';
 import { MarkdownText } from '../ui/MarkdownText';
 import { useTheme } from '../../context/ThemeContext';
 import { spacing, borderRadius } from '../../constants/theme';
+import { formatLocalTime } from '../../utils/dateTime';
 
 interface ChatBubbleProps {
   message: ChatMessage;
+  onDelete?: () => void;
 }
 
-export function ChatBubble({ message }: ChatBubbleProps) {
+export function ChatBubble({ message, onDelete }: ChatBubbleProps) {
   const { colors, typography } = useTheme();
   const isUser = message.role === 'user';
   const isError = message.id.startsWith('err_');
@@ -59,6 +61,16 @@ export function ChatBubble({ message }: ChatBubbleProps) {
         time: { ...typography.caption, marginTop: spacing.xs, alignSelf: 'flex-end', color: colors.textMuted },
         timeUser: { color: 'rgba(255,255,255,0.75)' },
         timeError: { color: colors.textMuted },
+        deleteBtn: {
+          marginLeft: spacing.xs,
+          marginBottom: spacing.xs,
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(255,255,255,0.2)',
+        },
       }),
     [colors, typography],
   );
@@ -87,12 +99,19 @@ export function ChatBubble({ message }: ChatBubbleProps) {
           {message.content}
         </MarkdownText>
         <Text style={[styles.time, isUser && styles.timeUser, isError && styles.timeError]}>
-          {new Date(message.timestamp).toLocaleTimeString(undefined, {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+          {formatLocalTime(message.timestamp)}
         </Text>
       </View>
+      {isUser && onDelete ? (
+        <Pressable
+          onPress={onDelete}
+          style={styles.deleteBtn}
+          hitSlop={8}
+          accessibilityLabel="Delete question"
+        >
+          <Ionicons name="trash-outline" size={14} color={colors.white} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
